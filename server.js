@@ -9,6 +9,11 @@ const CSV_FILE = 'Time_tracking_data.csv';
 
 const API_URL = "https://link.orangelogic.com/API/Search/v4.0/Search";
 
+// GitHub sync configuration (set via environment variables)
+const GITHUB_TOKEN = process.env.GITHUB_TOKEN || '';
+const GITHUB_REPO = process.env.GITHUB_REPO || 'davidngo0296/time_tracking_report'; // owner/repo
+const GITHUB_BRANCH = process.env.GITHUB_BRANCH || 'main';
+
 const server = http.createServer((req, res) => {
     console.log(`${req.method} ${req.url}`);
 
@@ -231,14 +236,107 @@ async function runUpdateLogic(token, ticketIdsStr) {
 
     // Save CSV
     if (trackingData.length > 0) {
-        fs.writeFileSync(csvPath, stringifyCSV(trackingData), 'utf8');
+        const csvContent = stringifyCSV(trackingData);
+        fs.writeFileSync(csvPath, csvContent, 'utf8');
         log(`CSV updated at ${csvPath}`);
+
+        // Sync to GitHub if token is configured
+        if (GITHUB_TOKEN) {
+            try {
+                await syncToGitHub(csvContent, log);
+            } catch (err) {
+                log(`GitHub sync failed: ${err.message}`);
+            }
+        }
     }
 
     return updatesLog;
 }
 
 // --- Utils ---
+
+// Sync CSV to GitHub using GitHub Contents API
+async function syncToGitHub(csvContent, log) {
+    const filePath = CSV_FILE;
+    const apiBase = `https://api.github.com/repos/${GITHUB_REPO}/contents/${filePath}`;
+
+    log(`Syncing to GitHub: ${GITHUB_REPO}/${filePath}`);
+
+    // 1. Get current file SHA (needed for update)
+    const getSha = () => new Promise((resolve, reject) => {
+        const url = new URL(apiBase);
+        url.searchParams.set('ref', GITHUB_BRANCH);
+
+        const options = {
+            hostname: url.hostname,
+            path: url.pathname + url.search,
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${GITHUB_TOKEN}`,
+                'User-Agent': 'TimeTrackingReport/1.0',
+                'Accept': 'application/vnd.github.v3+json'
+            }
+        };
+
+        https.request(options, (res) => {
+            let data = '';
+            res.on('data', chunk => data += chunk);
+            res.on('end', () => {
+                if (res.statusCode === 200) {
+                    const json = JSON.parse(data);
+                    resolve(json.sha);
+                } else if (res.statusCode === 404) {
+                    resolve(null); // File doesn't exist yet
+                } else {
+                    reject(new Error(`Failed to get file SHA: ${res.statusCode}`));
+                }
+            });
+        }).on('error', reject).end();
+    });
+
+    // 2. Update/Create file
+    const updateFile = (sha) => new Promise((resolve, reject) => {
+        const body = JSON.stringify({
+            message: `Update time tracking data - ${new Date().toISOString().split('T')[0]}`,
+            content: Buffer.from(csvContent).toString('base64'),
+            branch: GITHUB_BRANCH,
+            ...(sha && { sha }) // Include SHA only if file exists
+        });
+
+        const options = {
+            hostname: 'api.github.com',
+            path: `/repos/${GITHUB_REPO}/contents/${filePath}`,
+            method: 'PUT',
+            headers: {
+                'Authorization': `Bearer ${GITHUB_TOKEN}`,
+                'User-Agent': 'TimeTrackingReport/1.0',
+                'Accept': 'application/vnd.github.v3+json',
+                'Content-Type': 'application/json',
+                'Content-Length': Buffer.byteLength(body)
+            }
+        };
+
+        const req = https.request(options, (res) => {
+            let data = '';
+            res.on('data', chunk => data += chunk);
+            res.on('end', () => {
+                if (res.statusCode === 200 || res.statusCode === 201) {
+                    resolve(JSON.parse(data));
+                } else {
+                    reject(new Error(`GitHub API error ${res.statusCode}: ${data}`));
+                }
+            });
+        });
+
+        req.on('error', reject);
+        req.write(body);
+        req.end();
+    });
+
+    const sha = await getSha();
+    await updateFile(sha);
+    log(`✓ GitHub sync complete!`);
+}
 
 function searchOLTask(query, token) {
     return new Promise((resolve, reject) => {
