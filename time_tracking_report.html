@@ -40,6 +40,24 @@
             flex-direction: column;
         }
 
+        /* Team charts grid layout */
+        #team-charts-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+            gap: 30px;
+            padding: 10px 0;
+        }
+
+        #team-charts-container .chart-wrapper {
+            flex: none;
+            min-width: unset;
+            height: 350px;
+            background: #fafafa;
+            border-radius: 8px;
+            padding: 15px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+        }
+
         .chart-controls {
             text-align: right;
             margin-bottom: 5px;
@@ -242,6 +260,96 @@
         .modal-btn:hover {
             background: #c0392b;
         }
+
+        /* Ticket Management Styles */
+        /* Ticket Management Modal Styles */
+        .ticket-controls {
+            /* Now part of modal body, remove specific layout properties causing conflict */
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .manage-btn {
+            background-color: #f39c12;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: background-color 0.2s;
+        }
+
+        .manage-btn:hover {
+            background-color: #d35400;
+        }
+
+        .ticket-input-group {
+            display: flex;
+            gap: 10px;
+            flex-grow: 1;
+        }
+
+        .ticket-input-group input {
+            flex-grow: 1;
+            padding: 8px;
+            border: 1px solid #bdc3c7;
+            border-radius: 4px;
+        }
+
+        .add-btn {
+            background-color: #2ecc71;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .add-btn:hover {
+            background-color: #27ae60;
+        }
+
+        .ticket-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 10px;
+            width: 100%;
+        }
+
+        .ticket-tag {
+            background: #fff;
+            padding: 5px 10px;
+            border-radius: 15px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.9em;
+            color: #2c3e50;
+        }
+
+        .remove-ticket {
+            color: #e74c3c;
+            cursor: pointer;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+        }
+
+        .remove-ticket:hover {
+            background: #fdeaea;
+        }
     </style>
 </head>
 
@@ -249,10 +357,38 @@
     <div class="container">
         <h1>Time Tracking Report</h1>
 
+        <!-- Ticket Management Modal -->
+        <div id="ticket-modal" class="modal-overlay">
+            <div class="modal-content" style="border-left: 5px solid #2ecc71; max-width: 600px;">
+                <div class="modal-header" style="color: #27ae60;">Manage Tickets</div>
+                <div class="modal-body">
+                    <div class="ticket-controls">
+                        <div class="ticket-input-group">
+                            <input type="text" id="new-ticket-input" placeholder="Enter Ticket ID (e.g. 29AFC7) or URL">
+                            <button class="add-btn" onclick="addTicketFromInput()">Add</button>
+                        </div>
+
+                        <div id="ticket-list" class="ticket-list">
+                            <!-- Ticket tags will be injected here -->
+                        </div>
+                        <div style="font-size: 0.8em; color: #7f8c8d;">
+                            * Manage the tickets you want to track here. This list is saved in your browser.
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="modal-btn" onclick="closeTicketModal()" style="background: #95a5a6;">Close</button>
+                </div>
+            </div>
+        </div>
+
         <div class="risk-controls">
             <label for="dev-days">Remaining Dev Days:</label>
             <input type="number" id="dev-days" min="0" placeholder="e.g. 5">
             <button class="risk-btn" onclick="checkRisk()">Check Risk</button>
+            <button id="manage-btn" class="manage-btn" onclick="openTicketModal()">
+                <span>Manage Tickets</span>
+            </button>
             <button id="update-btn" class="update-btn" onclick="updateData()">
                 <span>Update Data</span>
             </button>
@@ -263,13 +399,9 @@
         <div id="report-container"></div>
 
         <div id="global-stats" class="enhancement-section" style="margin-top: 40px;">
-            <h2>Total Time Left by Person (Global: <span id="global-date-display"></span>)</h2>
-            <div class="charts-container" style="justify-content: center;">
-                <div class="chart-wrapper" style="max-width: 600px;">
-                    <div class="canvas-holder">
-                        <canvas id="global-time-left-chart"></canvas>
-                    </div>
-                </div>
+            <h2>Total Time Left by Team (Latest: <span id="global-date-display"></span>)</h2>
+            <div id="team-charts-container" class="charts-container" style="flex-wrap: wrap;">
+                <!-- Team pie charts will be injected here -->
             </div>
         </div>
     </div>
@@ -285,14 +417,125 @@
         </div>
     </div>
 
+
+
     <script>
         // Global stores
         const chartStore = {};
         const chartInstances = {};
         let currentRiskyAssignees = new Set(); // Stores globally risky assignees
+        // Use sessionStorage so it survives reloads but clears on close
+        let userToken = sessionStorage.getItem('ol_api_token') || '';
+        let hasAddedTickets = false;
+        let hasRemovedTickets = false;
+
+        function openTicketModal() {
+            hasAddedTickets = false;
+            hasRemovedTickets = false;
+            document.getElementById('ticket-modal').classList.add('show');
+        }
+
+        function closeTicketModal() {
+            document.getElementById('ticket-modal').classList.remove('show');
+            if (hasAddedTickets) {
+                updateData();
+            } else if (hasRemovedTickets) {
+                location.reload();
+            }
+        }
+
+        // --- Ticket Management Logic ---
+        const DEFAULT_TICKET_IDS = [
+            "2966C1", "299JUG", "29AFC7", "41UHTK", "290W0B", "295MDK",
+            "2998U9", "41UDUO", "295PPP", "295PQ6", "2998UG", "41XBES",
+            "295PU9", "28OKQ0", "2921J8", "41X6FO"
+        ];
+
+        let currentTicketIds = JSON.parse(localStorage.getItem('tracked_tickets')) || DEFAULT_TICKET_IDS;
+
+        function saveTickets(action) {
+            localStorage.setItem('tracked_tickets', JSON.stringify(currentTicketIds));
+            renderTickets();
+            if (action === 'add') hasAddedTickets = true;
+            if (action === 'remove') hasRemovedTickets = true;
+        }
+
+        function renderTickets() {
+            const listEl = document.getElementById('ticket-list');
+            listEl.innerHTML = '';
+            currentTicketIds.forEach(id => {
+                const tag = document.createElement('div');
+                tag.className = 'ticket-tag';
+                tag.innerHTML = `
+                    <span>${id}</span>
+                    <span class="remove-ticket" onclick="removeTicket('${id}')" title="Remove">&times;</span>
+                `;
+                listEl.appendChild(tag);
+            });
+        }
+
+        function addTicketFromInput() {
+            const input = document.getElementById('new-ticket-input');
+            const val = input.value.trim();
+            if (!val) return;
+
+            const id = parseTicketId(val);
+            if (id) {
+                // Check dup
+                if (!currentTicketIds.includes(id)) {
+                    currentTicketIds.push(id);
+                    saveTickets('add');
+                    input.value = ''; // clear
+                } else {
+                    alert('Ticket ID already in list.');
+                }
+            } else {
+                alert('Invalid Ticket ID or URL.');
+            }
+        }
+
+        function removeTicket(id) {
+            if (confirm(`Remove ticket ${id} from tracking list?`)) {
+                currentTicketIds = currentTicketIds.filter(t => t !== id);
+                saveTickets('remove');
+            }
+        }
+
+        function parseTicketId(input) {
+            // Case 1: URL like .../Tasks/29AFC7...
+            // Regex to find ID pattern: 6 chars, mixed alphanumeric often starts with number? 
+            // Actually OL IDs are usually 6 chars alphanumeric like 29AFC7.
+            // Let's look for the last segment of URL if it matches ID pattern, or just the input itself if it's 6 chars.
+
+            // Simple approach: Extract strict alphanumeric block
+            let match = input.match(/\/Tasks\/([a-zA-Z0-9]+)/);
+            if (match && match[1]) {
+                return match[1].toUpperCase();
+            }
+
+            // Case 2: Just the ID (e.g. 29AFC7 or L-29AFC7)
+            // Clean up 'L-' prefix if user typed it
+            let clean = input.replace(/^L-/i, '').trim();
+            // Validate: It should be reasonably short (e.g. 6-10 chars) alphanumeric
+            if (/^[a-zA-Z0-9]+$/.test(clean)) {
+                return clean.toUpperCase();
+            }
+
+            return null;
+        }
+
+        // Initialize Tickets UI
+        renderTickets();
+
 
         // --- Update Data & Modal Logic ---
         function updateData() {
+            if (!userToken) {
+                userToken = prompt("Please enter your OrangeLogic API Token:");
+                if (!userToken) return; // Users cancelled
+                sessionStorage.setItem('ol_api_token', userToken);
+            }
+
             const btn = document.getElementById('update-btn');
             const originalText = btn.innerHTML;
 
@@ -300,7 +543,14 @@
             btn.innerHTML = 'Updating...';
             btn.disabled = true;
 
-            fetch('/run-update-script', { method: 'POST' })
+            fetch('/run-update-script', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    token: userToken,
+                    ticketIds: currentTicketIds.join(',')
+                })
+            })
                 .then(async response => {
                     const contentType = response.headers.get('content-type');
                     if (!response.ok) {
@@ -318,6 +568,12 @@
                 })
                 .then(result => {
                     if (result.error) {
+                        // Check if error is related to token
+                        if (result.error.toLowerCase().includes('token') || result.error.includes('401') || result.error.includes('403')) {
+                            userToken = ''; // Clear invalid token
+                            sessionStorage.removeItem('ol_api_token');
+                            throw new Error("Invalid Token or Verification Failed.\n\n" + result.error + "\n\nPlease try again with a valid token.");
+                        }
                         throw new Error(result.error);
                     }
                     // Success: Reload page
@@ -387,8 +643,30 @@
         function processDataForTimeSeries(data) {
             const enhancements = {};
 
+            // Filter Logic:
+            // If the dataset contains ANY IDs, we enforce filtering by currentTicketIds.
+            // This hides tickets that are not in the list (unless the dataset is purely legacy with no IDs).
+            const datasetHasIds = data.some(r => r['Ticket ID'] && r['Ticket ID'].trim() !== '');
+            const allowedTitles = new Set();
+
+            if (datasetHasIds) {
+                // Identify Titles that constitute "Tracked Tickets"
+                data.forEach(row => {
+                    const tid = row['Ticket ID'];
+                    if (tid && currentTicketIds.includes(tid)) {
+                        allowedTitles.add(row['Enhancement title']);
+                    }
+                });
+            }
+
             data.forEach(row => {
                 const title = row['Enhancement title'];
+
+                // Enforce Filter if we have IDs in the system
+                if (datasetHasIds && !allowedTitles.has(title)) {
+                    return;
+                }
+
                 const date = row['Capture date'];
                 const assignee = row['Assignee'] || '(unassigned)';
                 const spent = parseFloat(row['Time spent']) || 0;
@@ -790,20 +1068,29 @@
             renderChart(`chart-left-${index}`, 'bar');
         }
 
-        function createGlobalTimeLeftChart(groupedData, globalMaxDate) {
+        function createGlobalTimeLeftChart(groupedData, globalMaxDate, rawData) {
             document.getElementById('global-date-display').textContent = globalMaxDate;
-            const globalAgg = {};
 
-            // 1. Aggregate Data
+            // 1. Build a map of Assignee -> Team from the latest date's data
+            const assigneeTeamMap = {};
+            rawData.forEach(row => {
+                if (row['Capture date'] === globalMaxDate) {
+                    const assignee = row['Assignee'] || '(unassigned)';
+                    const team = row['Main Dev Team'] || '(No Team)';
+                    // Use latest occurrence (last row wins)
+                    assigneeTeamMap[assignee] = team;
+                }
+            });
+
+            // 2. Aggregate time left per assignee
+            const globalAgg = {};
             Object.keys(groupedData).forEach(title => {
                 const dates = groupedData[title].dates;
                 const dateIndex = dates.indexOf(globalMaxDate);
 
                 if (dateIndex !== -1) {
-                    // This enhancement has data for the latest global date
                     const assignees = groupedData[title].assignees;
                     Object.keys(assignees).forEach(assignee => {
-                        // The 'left' array stores data in hours (already processed in processDataForTimeSeries)
                         const timeLeft = assignees[assignee].left[dateIndex];
                         if (timeLeft > 0) {
                             if (!globalAgg[assignee]) {
@@ -815,42 +1102,74 @@
                 }
             });
 
-            // 2. Prepare Chart Data
-            const labels = Object.keys(globalAgg);
-            const values = Object.values(globalAgg);
-            const chartColors = labels.map((_, i) => colors[i % colors.length]);
+            // 3. Group aggregated data by team
+            const teamData = {};
+            Object.keys(globalAgg).forEach(assignee => {
+                const team = assigneeTeamMap[assignee] || '(No Team)';
+                if (!teamData[team]) {
+                    teamData[team] = { labels: [], values: [] };
+                }
+                teamData[team].labels.push(assignee);
+                teamData[team].values.push(globalAgg[assignee]);
+            });
 
-            // 3. Render Chart
-            const ctx = document.getElementById('global-time-left-chart').getContext('2d');
-            new Chart(ctx, {
-                type: 'pie',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        data: values,
-                        backgroundColor: chartColors
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: { position: 'right' },
-                        title: { display: true, text: `Total Time Left (${globalMaxDate})` },
-                        tooltip: {
-                            callbacks: {
-                                label: function (context) {
-                                    const label = context.label || '';
-                                    const value = context.parsed;
-                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
-                                    const percentage = total > 0 ? ((value / total) * 100).toFixed(1) + '%' : '0%';
-                                    const days = (value / 8).toFixed(2);
-                                    return `${label}: ${value.toFixed(2)} hrs / ${days} days (${percentage})`;
+            // 4. Create a pie chart for each team
+            const container = document.getElementById('team-charts-container');
+            container.innerHTML = ''; // Clear
+
+            const teamNames = Object.keys(teamData).sort();
+            teamNames.forEach((teamName, idx) => {
+                const data = teamData[teamName];
+                const totalHours = data.values.reduce((a, b) => a + b, 0);
+
+                // Create wrapper
+                const wrapper = document.createElement('div');
+                wrapper.className = 'chart-wrapper';
+
+                // Create canvas holder
+                const holder = document.createElement('div');
+                holder.className = 'canvas-holder';
+                const canvas = document.createElement('canvas');
+                canvas.id = `team-chart-${idx}`;
+                holder.appendChild(canvas);
+                wrapper.appendChild(holder);
+                container.appendChild(wrapper);
+
+                // Render chart
+                const chartColors = data.labels.map((_, i) => colors[i % colors.length]);
+                new Chart(canvas.getContext('2d'), {
+                    type: 'pie',
+                    data: {
+                        labels: data.labels,
+                        datasets: [{
+                            data: data.values,
+                            backgroundColor: chartColors
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { position: 'right' },
+                            title: {
+                                display: true,
+                                text: `${teamName} (${totalHours.toFixed(1)} hrs / ${(totalHours / 8).toFixed(1)} days)`
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function (context) {
+                                        const label = context.label || '';
+                                        const value = context.parsed;
+                                        const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                        const percentage = total > 0 ? ((value / total) * 100).toFixed(1) + '%' : '0%';
+                                        const days = (value / 8).toFixed(2);
+                                        return `${label}: ${value.toFixed(2)} hrs / ${days} days (${percentage})`;
+                                    }
                                 }
                             }
                         }
                     }
-                }
+                });
             });
         }
 
@@ -871,8 +1190,8 @@
                     }
                 });
 
-                // Create Global Chart
-                createGlobalTimeLeftChart(groupedData, globalMaxDate);
+                // Create Global Chart (pass rawData for team mapping)
+                createGlobalTimeLeftChart(groupedData, globalMaxDate, parsedData);
 
                 // Auto-run risk check on load
                 checkRisk();
