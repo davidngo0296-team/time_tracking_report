@@ -1,0 +1,885 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Time Tracking Report</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: sans-serif;
+            padding: 20px;
+            background-color: #f4f4f9;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .enhancement-section {
+            background: #fff;
+            border: 1px solid #e0e0e0;
+            padding: 20px;
+            margin-bottom: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+
+        .charts-container {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .chart-wrapper {
+            flex: 1;
+            min-width: 400px;
+            height: 400px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .chart-controls {
+            text-align: right;
+            margin-bottom: 5px;
+        }
+
+        .chart-btn {
+            background: #f8f9fa;
+            border: 1px solid #ddd;
+            padding: 4px 12px;
+            cursor: pointer;
+            border-radius: 4px;
+            font-size: 0.85em;
+            color: #555;
+            transition: all 0.2s;
+        }
+
+        .chart-btn:hover {
+            background: #e2e6ea;
+        }
+
+        .chart-btn.active {
+            background: #3498db;
+            color: white;
+            border-color: #2980b9;
+        }
+
+        .canvas-holder {
+            flex: 1;
+            position: relative;
+            min-height: 0;
+        }
+
+        .risk-controls {
+            background: #fff;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+
+        .risk-controls label {
+            font-weight: bold;
+        }
+
+        .risk-controls input {
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            width: 100px;
+        }
+
+        .risk-btn {
+            background: #e74c3c;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .risk-btn:hover {
+            background: #c0392b;
+        }
+
+        #risk-report {
+            margin-bottom: 30px;
+        }
+
+        .risk-item {
+            background: #fff;
+            border-left: 5px solid #e74c3c;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 4px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+
+        .risk-item h3 {
+            margin: 0 0 10px 0;
+            color: #c0392b;
+            font-size: 1.1em;
+        }
+
+        .risk-item ul {
+            margin: 0;
+            padding-left: 20px;
+        }
+
+        .risk-item li {
+            margin-bottom: 5px;
+            color: #555;
+        }
+
+        .risk-time {
+            font-weight: bold;
+            color: #333;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 40px;
+            color: #2c3e50;
+        }
+
+        h2 {
+            color: #2c3e50;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+            margin-top: 0;
+            font-size: 1.4em;
+        }
+
+
+
+
+
+        .update-btn {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: background-color 0.2s;
+        }
+
+        .update-btn:hover {
+            background-color: #2980b9;
+        }
+
+        .update-btn:disabled {
+            background-color: #95a5a6;
+            cursor: not-allowed;
+        }
+
+        /* Modal Styles */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-overlay.show {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 25px;
+            border-radius: 8px;
+            max-width: 500px;
+            width: 90%;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            border-left: 5px solid #e74c3c;
+        }
+
+        .modal-header {
+            color: #c0392b;
+            font-size: 1.25em;
+            margin-bottom: 15px;
+            font-weight: bold;
+        }
+
+        .modal-body {
+            color: #333;
+            margin-bottom: 20px;
+            line-height: 1.5;
+            white-space: pre-wrap;
+            /* Preserve formatting for error messages */
+        }
+
+        .modal-footer {
+            text-align: right;
+        }
+
+        .modal-btn {
+            background: #e74c3c;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .modal-btn:hover {
+            background: #c0392b;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>Time Tracking Report</h1>
+
+        <div class="risk-controls">
+            <label for="dev-days">Remaining Dev Days:</label>
+            <input type="number" id="dev-days" min="0" placeholder="e.g. 5">
+            <button class="risk-btn" onclick="checkRisk()">Check Risk</button>
+            <button id="update-btn" class="update-btn" onclick="updateData()">
+                <span>Update Data</span>
+            </button>
+        </div>
+
+        <div id="risk-report"></div>
+
+        <div id="report-container"></div>
+
+        <div id="global-stats" class="enhancement-section" style="margin-top: 40px;">
+            <h2>Total Time Left by Person (Global: <span id="global-date-display"></span>)</h2>
+            <div class="charts-container" style="justify-content: center;">
+                <div class="chart-wrapper" style="max-width: 600px;">
+                    <div class="canvas-holder">
+                        <canvas id="global-time-left-chart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Error Modal -->
+    <div id="error-modal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">Update Failed</div>
+            <div class="modal-body" id="modal-message"></div>
+            <div class="modal-footer">
+                <button class="modal-btn" onclick="closeModal()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global stores
+        const chartStore = {};
+        const chartInstances = {};
+        let currentRiskyAssignees = new Set(); // Stores globally risky assignees
+
+        // --- Update Data & Modal Logic ---
+        function updateData() {
+            const btn = document.getElementById('update-btn');
+            const originalText = btn.innerHTML;
+
+            // Set Loading State
+            btn.innerHTML = 'Updating...';
+            btn.disabled = true;
+
+            fetch('/run-update-script', { method: 'POST' })
+                .then(async response => {
+                    const contentType = response.headers.get('content-type');
+                    if (!response.ok) {
+                        if (response.status === 404 || response.status === 405) {
+                            throw new Error("The Update Service is not reachable.\n\nYou are likely viewing this file via VS Code Live Preview or directly from the file system.\n\nTo use the 'Update Data' feature, you must:\n1. Open a terminal in this file's folder.\n2. Run: node server.js\n3. Open: http://localhost:3001");
+                        }
+                        // Try to get error text
+                        const text = await response.text();
+                        throw new Error(`Server returned ${response.status}: ${text}`);
+                    }
+                    if (contentType && contentType.includes('application/json')) {
+                        return response.json();
+                    }
+                    return {}; // Assume success if 200 OK
+                })
+                .then(result => {
+                    if (result.error) {
+                        throw new Error(result.error);
+                    }
+                    // Success: Reload page
+                    location.reload();
+                })
+                .catch(error => {
+                    let msg = error.message;
+                    if (msg.includes('Failed to fetch')) {
+                        msg = "Could not connect to the update server.\n\nSince this is a static HTML file, you must run a local server to execute the PowerShell script.\n\nCheck if 'server.js' is running.";
+                    }
+                    showErrorModal(msg);
+                })
+                .finally(() => {
+                    btn.innerHTML = originalText;
+                    btn.disabled = false;
+                });
+        }
+
+        function showErrorModal(message) {
+            document.getElementById('modal-message').textContent = message;
+            document.getElementById('error-modal').classList.add('show');
+        }
+
+        function closeModal() {
+            document.getElementById('error-modal').classList.remove('show');
+        }
+        // ---------------------------------
+
+        // Distinct colors for series
+        const colors = [
+            '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40',
+            '#e6194b', '#3cb44b', '#ffe119', '#4363d8', '#f58231', '#911eb4'
+        ];
+
+        function parseCSV(csv) {
+            // Remove BOM if present
+            if (csv.charCodeAt(0) === 0xFEFF) {
+                csv = csv.slice(1);
+            }
+
+            const lines = csv.trim().split('\n');
+            // Regex to match CSV columns (handles quotes)
+            const splitRegex = /,(?=(?:(?:[^\"]*\"){2})*[^\"]*$)/;
+
+            const headers = lines[0].split(',').map(h => {
+                return h.trim().replace(/^"|"$/g, '');
+            });
+
+            const data = [];
+            for (let i = 1; i < lines.length; i++) {
+                if (!lines[i].trim()) continue;
+                const values = lines[i].split(splitRegex);
+
+                const entry = {};
+                headers.forEach((h, index) => {
+                    let val = values[index] ? values[index].trim() : '';
+                    if (val.startsWith('"') && val.endsWith('"')) {
+                        val = val.slice(1, -1);
+                    }
+                    entry[h] = val;
+                });
+                data.push(entry);
+            }
+            return data;
+        }
+
+        function processDataForTimeSeries(data) {
+            const enhancements = {};
+
+            data.forEach(row => {
+                const title = row['Enhancement title'];
+                const date = row['Capture date'];
+                const assignee = row['Assignee'] || '(unassigned)';
+                const spent = parseFloat(row['Time spent']) || 0;
+                const left = parseFloat(row['Time left']) || 0;
+                const taskTitle = row['Task title'];
+
+                if (!enhancements[title]) {
+                    enhancements[title] = { dates: new Set(), assignees: {} };
+                }
+
+                enhancements[title].dates.add(date);
+
+                if (!enhancements[title].assignees[assignee]) {
+                    enhancements[title].assignees[assignee] = {};
+                }
+
+                if (!enhancements[title].assignees[assignee][date]) {
+                    enhancements[title].assignees[assignee][date] = { spent: 0, left: 0, tasks: [] };
+                }
+
+                enhancements[title].assignees[assignee][date].spent += spent;
+                enhancements[title].assignees[assignee][date].left += left;
+                enhancements[title].assignees[assignee][date].tasks.push({
+                    title: taskTitle,
+                    spent: spent,
+                    left: left
+                });
+            });
+
+            // Flatten data
+            Object.keys(enhancements).forEach(title => {
+                const dates = Array.from(enhancements[title].dates).sort();
+                enhancements[title].dates = dates;
+
+                Object.keys(enhancements[title].assignees).forEach(assignee => {
+                    const assigneeData = enhancements[title].assignees[assignee];
+                    const spentArray = [];
+                    const leftArray = [];
+                    const tasksArray = [];
+
+                    dates.forEach(d => {
+                        const val = assigneeData[d] || { spent: 0, left: 0, tasks: [] };
+                        spentArray.push(parseFloat((val.spent / 60).toFixed(2)));
+                        leftArray.push(parseFloat((val.left / 60).toFixed(2)));
+                        tasksArray.push(val.tasks);
+                    });
+
+                    enhancements[title].assignees[assignee] = {
+                        spent: spentArray,
+                        left: leftArray,
+                        tasks: tasksArray
+                    };
+                });
+            });
+
+            return enhancements;
+        }
+
+        function checkRisk() {
+            const daysInput = document.getElementById('dev-days');
+            const devDaysStr = daysInput.value.trim();
+            // If empty, maxHours is Infinity so normal devs aren't risky
+            const maxHours = devDaysStr === '' ? Infinity : (parseFloat(devDaysStr) * 8);
+            const reportContainer = document.getElementById('risk-report');
+
+            currentRiskyAssignees = new Set(); // Reset
+            reportContainer.innerHTML = '';
+
+            const developerRisks = {};
+
+            // 1. Aggregate Time Left per Developer across ALL enhancements
+            Object.keys(chartStore).forEach(canvasId => {
+                if (canvasId.includes('chart-left')) {
+                    const data = chartStore[canvasId];
+                    const enhancementTitle = data.enhancementTitle;
+
+                    data.barDatasets.forEach(dataset => {
+                        const assignee = dataset.label;
+                        const timeLeft = dataset.data[dataset.data.length - 1];
+
+                        if (timeLeft > 0) {
+                            if (!developerRisks[assignee]) {
+                                developerRisks[assignee] = { total: 0, details: [] };
+                            }
+                            developerRisks[assignee].total += timeLeft;
+                            developerRisks[assignee].details.push({
+                                enhancement: enhancementTitle,
+                                time: timeLeft
+                            });
+                        }
+                    });
+                }
+            });
+
+            // 2. Identify Risk and Build Report
+            let hasRisk = false;
+            Object.keys(developerRisks).sort().forEach(assignee => {
+                const riskData = developerRisks[assignee];
+
+                // Risk if exceeds limit OR is unassigned
+                if (riskData.total > maxHours || assignee === '(unassigned)') {
+                    hasRisk = true;
+                    currentRiskyAssignees.add(assignee);
+
+                    // Sort details descending by time
+                    riskData.details.sort((a, b) => b.time - a.time);
+
+                    const itemDiv = document.createElement('div');
+                    itemDiv.className = 'risk-item';
+
+                    const header = document.createElement('h3');
+                    header.textContent = `${assignee} (Total: ${riskData.total.toFixed(2)} hrs)`;
+                    itemDiv.appendChild(header);
+
+                    const ul = document.createElement('ul');
+                    riskData.details.forEach(detail => {
+                        const li = document.createElement('li');
+                        li.innerHTML = `<strong>${detail.enhancement}</strong>: <span class="risk-time">${detail.time.toFixed(2)} hrs</span>`;
+                        ul.appendChild(li);
+                    });
+                    itemDiv.appendChild(ul);
+                    reportContainer.appendChild(itemDiv);
+                }
+            });
+
+            if (!hasRisk && Object.keys(developerRisks).length > 0 && devDaysStr !== '') {
+                reportContainer.innerHTML = '<div style="padding:15px; background:#d4edda; color:#155724; border-radius:4px;">No risks identified based on current criteria.</div>';
+            }
+
+            // 3. Re-render all charts to apply legend highlighting globally
+            Object.keys(chartInstances).forEach(id => {
+                const wrapper = document.querySelector(`#${id}`).closest('.chart-wrapper');
+                const type = wrapper.querySelector('.chart-btn.active').classList.contains('btn-bar') ? 'bar' : 'pie';
+                renderChart(id, type);
+            });
+        }
+
+        function renderChart(canvasId, type) {
+            const ctx = document.getElementById(canvasId).getContext('2d');
+            const data = chartStore[canvasId];
+            const isTimeLeftChart = canvasId.includes('chart-left');
+
+            // Destroy existing
+            if (chartInstances[canvasId]) {
+                chartInstances[canvasId].destroy();
+            }
+
+            // Update Buttons
+            const wrapper = document.getElementById(canvasId).closest('.chart-wrapper');
+            wrapper.querySelectorAll('.chart-btn').forEach(btn => btn.classList.remove('active'));
+            wrapper.querySelector(`.btn-${type}`).classList.add('active');
+
+            const legendColorCallback = (ctx) => {
+                // ctx.legendItem exists in scriptable context for legend labels in v3/v4
+                return (isTimeLeftChart && ctx.legendItem && currentRiskyAssignees.has(ctx.legendItem.text)) ? '#e74c3c' : '#666';
+            };
+
+            const legendFontCallback = (ctx) => {
+                return {
+                    weight: (isTimeLeftChart && ctx.legendItem && currentRiskyAssignees.has(ctx.legendItem.text)) ? 'bold' : 'normal'
+                };
+            };
+
+            // Helper to wrap text
+            const wrapText = (str, maxLength) => {
+                const words = str.split(' ');
+                const lines = [];
+                let currentLine = words[0];
+
+                for (let i = 1; i < words.length; i++) {
+                    if (currentLine.length + 1 + words[i].length <= maxLength) {
+                        currentLine += ' ' + words[i];
+                    } else {
+                        lines.push(currentLine);
+                        currentLine = '  ' + words[i]; // Indent continuation lines
+                    }
+                }
+                lines.push(currentLine);
+                return lines;
+            };
+
+            let chartConfig;
+
+            if (type === 'bar') {
+                chartConfig = {
+                    type: 'bar',
+                    data: {
+                        labels: data.dates,
+                        datasets: data.barDatasets
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            x: { stacked: true, title: { display: true, text: 'Date' } },
+                            y: { stacked: true, beginAtZero: true, title: { display: true, text: 'Time (Hours)' } }
+                        },
+                        plugins: {
+                            legend: {
+                                position: 'top',
+                                labels: {
+                                    color: legendColorCallback,
+                                    font: legendFontCallback
+                                }
+                            },
+                            title: { display: true, text: data.title + ' (Trend)' },
+                            tooltip: {
+                                padding: 10,
+                                callbacks: {
+                                    footer: function (tooltipItems) {
+                                        // Show tasks on hover
+                                        const item = tooltipItems[0];
+                                        const tasks = item.dataset.tasks ? item.dataset.tasks[item.dataIndex] : [];
+                                        if (tasks && tasks.length > 0) {
+                                            const formatted = ['Tasks:'];
+                                            tasks.forEach(t => {
+                                                const wrapped = wrapText(t, 60); // Wrap at 60 chars
+                                                formatted.push('\u2022 ' + wrapped[0]);
+                                                for (let i = 1; i < wrapped.length; i++) {
+                                                    formatted.push(wrapped[i]);
+                                                }
+                                            });
+                                            return formatted;
+                                        }
+                                        return '';
+                                    }
+                                }
+                            }
+                        }
+                    }
+                };
+            } else {
+                chartConfig = {
+                    type: 'pie',
+                    data: {
+                        labels: data.latest.labels,
+                        datasets: [{
+                            data: data.latest.values,
+                            backgroundColor: data.latest.colors,
+                            tasks: data.latest.tasks
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'right',
+                                labels: {
+                                    color: legendColorCallback,
+                                    font: legendFontCallback
+                                }
+                            },
+                            title: { display: true, text: `${data.title} (${data.latestDate})` },
+                            tooltip: {
+                                padding: 10,
+                                callbacks: {
+                                    label: function (context) {
+                                        const label = context.label || '';
+                                        const value = context.parsed;
+                                        const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                        const percentage = total > 0 ? ((value / total) * 100).toFixed(1) + '%' : '0%';
+                                        return `${label}: ${value} hrs (${percentage})`;
+                                    },
+                                    footer: function (tooltipItems) {
+                                        // Show tasks on hover
+                                        const item = tooltipItems[0];
+                                        // For Pie chart, dataIndex corresponds to the slice (dataset index in bar terms)
+                                        const tasks = item.dataset.tasks ? item.dataset.tasks[item.dataIndex] : [];
+                                        if (tasks && tasks.length > 0) {
+                                            const formatted = ['Tasks:'];
+                                            tasks.forEach(t => {
+                                                const wrapped = wrapText(t, 60); // Wrap at 60 chars
+                                                formatted.push('\u2022 ' + wrapped[0]);
+                                                for (let i = 1; i < wrapped.length; i++) {
+                                                    formatted.push(wrapped[i]);
+                                                }
+                                            });
+                                            return formatted;
+                                        }
+                                        return '';
+                                    }
+                                }
+                            }
+                        }
+                    }
+                };
+            }
+
+            chartInstances[canvasId] = new Chart(ctx, chartConfig);
+        }
+
+        function createChartSection(container, title, index, groupedData) {
+            const section = document.createElement('div');
+            section.className = 'enhancement-section';
+
+            const header = document.createElement('h2');
+            header.textContent = title;
+            section.appendChild(header);
+
+            const chartsDiv = document.createElement('div');
+            chartsDiv.className = 'charts-container';
+
+            // Common Data extraction
+            const dates = groupedData[title].dates;
+            const latestDate = dates[dates.length - 1];
+            const assignees = Object.keys(groupedData[title].assignees);
+
+            // Helper to build store data
+            const buildStoreData = (metricKey, label) => {
+                const barDatasets = assignees.map((assignee, i) => {
+                    // Filter tasks for this metric (e.g., only show tasks with > 0 time left if metric is 'left')
+                    const rawTasksArray = groupedData[title].assignees[assignee].tasks;
+                    const formattedTasksArray = rawTasksArray.map(dayTasks => {
+                        return dayTasks
+                            .filter(t => t[metricKey] > 0)
+                            .sort((a, b) => b[metricKey] - a[metricKey])
+                            .map(t => `[${(t[metricKey] / 60).toFixed(2)} hrs] ${t.title}`);
+                    });
+
+                    return {
+                        label: assignee,
+                        data: groupedData[title].assignees[assignee][metricKey],
+                        tasks: formattedTasksArray,
+                        backgroundColor: colors[i % colors.length]
+                    };
+                });
+
+                // Extract latest data for Pie
+                const latestValues = [];
+                const latestLabels = [];
+                const latestColors = [];
+                const latestTasks = [];
+
+                assignees.forEach((assignee, i) => {
+                    const val = groupedData[title].assignees[assignee][metricKey][dates.length - 1];
+                    // Only show if value > 0
+                    if (val > 0) {
+                        latestLabels.push(assignee);
+                        latestValues.push(val);
+                        latestColors.push(colors[i % colors.length]);
+                        // Get the tasks for the latest date from the corresponding bar dataset
+                        latestTasks.push(barDatasets[i].tasks[dates.length - 1]);
+                    }
+                });
+
+                return {
+                    title: label,
+                    enhancementTitle: title, // Store Enhancement Title for Risk Report
+                    dates: dates,
+                    latestDate: latestDate,
+                    barDatasets: barDatasets,
+                    latest: {
+                        labels: latestLabels,
+                        values: latestValues,
+                        colors: latestColors,
+                        tasks: latestTasks
+                    }
+                };
+            };
+
+            // Create 2 charts
+            ['Spent', 'Left'].forEach(metric => {
+                const metricKey = metric.toLowerCase();
+                const canvasId = `chart-${metricKey}-${index}`;
+
+                // Wrapper
+                const wrapper = document.createElement('div');
+                wrapper.className = 'chart-wrapper';
+
+                // Controls
+                const controls = document.createElement('div');
+                controls.className = 'chart-controls';
+                controls.innerHTML = `
+                    <button class="chart-btn btn-bar" onclick="renderChart('${canvasId}', 'bar')">Trend</button>
+                    <button class="chart-btn btn-pie" onclick="renderChart('${canvasId}', 'pie')">Latest (${latestDate})</button>
+                `;
+                wrapper.appendChild(controls);
+
+                // Canvas Container
+                const holder = document.createElement('div');
+                holder.className = 'canvas-holder';
+                const canvas = document.createElement('canvas');
+                canvas.id = canvasId;
+                holder.appendChild(canvas);
+                wrapper.appendChild(holder);
+
+                chartsDiv.appendChild(wrapper);
+
+                // Store Data
+                chartStore[canvasId] = buildStoreData(metricKey, `Time ${metric}`);
+            });
+
+            section.appendChild(chartsDiv);
+            container.appendChild(section);
+
+            // Initial Render
+            renderChart(`chart-spent-${index}`, 'bar');
+            renderChart(`chart-left-${index}`, 'bar');
+        }
+
+        function createGlobalTimeLeftChart(groupedData, globalMaxDate) {
+            document.getElementById('global-date-display').textContent = globalMaxDate;
+            const globalAgg = {};
+
+            // 1. Aggregate Data
+            Object.keys(groupedData).forEach(title => {
+                const dates = groupedData[title].dates;
+                const dateIndex = dates.indexOf(globalMaxDate);
+
+                if (dateIndex !== -1) {
+                    // This enhancement has data for the latest global date
+                    const assignees = groupedData[title].assignees;
+                    Object.keys(assignees).forEach(assignee => {
+                        // The 'left' array stores data in hours (already processed in processDataForTimeSeries)
+                        const timeLeft = assignees[assignee].left[dateIndex];
+                        if (timeLeft > 0) {
+                            if (!globalAgg[assignee]) {
+                                globalAgg[assignee] = 0;
+                            }
+                            globalAgg[assignee] += timeLeft;
+                        }
+                    });
+                }
+            });
+
+            // 2. Prepare Chart Data
+            const labels = Object.keys(globalAgg);
+            const values = Object.values(globalAgg);
+            const chartColors = labels.map((_, i) => colors[i % colors.length]);
+
+            // 3. Render Chart
+            const ctx = document.getElementById('global-time-left-chart').getContext('2d');
+            new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: values,
+                        backgroundColor: chartColors
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'right' },
+                        title: { display: true, text: `Total Time Left (${globalMaxDate})` },
+                        tooltip: {
+                            callbacks: {
+                                label: function (context) {
+                                    const label = context.label || '';
+                                    const value = context.parsed;
+                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                    const percentage = total > 0 ? ((value / total) * 100).toFixed(1) + '%' : '0%';
+                                    const days = (value / 8).toFixed(2);
+                                    return `${label}: ${value.toFixed(2)} hrs / ${days} days (${percentage})`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        fetch('Time_tracking_data.csv')
+            .then(response => response.text())
+            .then(csvText => {
+                const parsedData = parseCSV(csvText);
+                const groupedData = processDataForTimeSeries(parsedData);
+                const container = document.getElementById('report-container');
+
+                // Find global latest date
+                const globalMaxDate = parsedData.reduce((max, row) => (row['Capture date'] > max ? row['Capture date'] : max), '');
+
+                Object.keys(groupedData).forEach((title, index) => {
+                    const enhancementDates = groupedData[title].dates;
+                    if (enhancementDates.includes(globalMaxDate)) {
+                        createChartSection(container, title, index, groupedData);
+                    }
+                });
+
+                // Create Global Chart
+                createGlobalTimeLeftChart(groupedData, globalMaxDate);
+
+                // Auto-run risk check on load
+                checkRisk();
+            })
+            .catch(error => console.error('Error loading CSV:', error));
+
+    </script>
+</body>
+
+</html>
