@@ -107,6 +107,21 @@ async function runUpdateLogic(token, ticketIdsStr) {
         console.log("Migrating CSV to include Main Dev Team...");
         trackingData.forEach(row => row['Main Dev Team'] = '');
     }
+    // Migration: If no "ETA" field, add it
+    if (trackingData.length > 0 && !('ETA' in trackingData[0])) {
+        console.log("Migrating CSV to include ETA...");
+        trackingData.forEach(row => row['ETA'] = '');
+    }
+    // Migration: If no "Cortex Link" field, add it
+    if (trackingData.length > 0 && !('Cortex Link' in trackingData[0])) {
+        console.log("Migrating CSV to include Cortex Link...");
+        trackingData.forEach(row => row['Cortex Link'] = '');
+    }
+    // Migration: If no "Status" field, add it
+    if (trackingData.length > 0 && !('Status' in trackingData[0])) {
+        console.log("Migrating CSV to include Status...");
+        trackingData.forEach(row => row['Status'] = '');
+    }
 
     // Index for fast lookup
     const dataIndex = {};
@@ -182,6 +197,8 @@ async function runUpdateLogic(token, ticketIdsStr) {
 
             const timeSpent = task["Document.TimeSpentMn"] || "0";
             let timeLeft = task["Document.TimeLeftMn"] || "0";
+            const eta = task["Document.CurrentEstimatedCompletionDate"] || "";
+            const cortexLink = task["Document.CortexShareLinkRaw"] || "";
             // Use team from enhancement (parent level) - child tasks don't have this field
 
             if (IGNORED_STATUSES.includes(status)) {
@@ -199,7 +216,10 @@ async function runUpdateLogic(token, ticketIdsStr) {
                 'Time spent': timeSpent,
                 'Time left': timeLeft,
                 'Ticket ID': rawId.replace(/^L-/, ''), // Store short ID
-                'Main Dev Team': enhancementTeam
+                'Main Dev Team': enhancementTeam,
+                'ETA': eta,
+                'Cortex Link': cortexLink,
+                'Status': status
             };
 
             // Backfill History Logic
@@ -245,7 +265,8 @@ function searchOLTask(query, token) {
         const fields = [
             "CoreField.Title", "CoreField.Identifier", "SystemIdentifier",
             "CoreField.DocSubType", "CoreField.Status", "AssignedTo",
-            "Document.TimeSpentMn", "Document.TimeLeftMn", "dev.Main-dev-team"
+            "Document.TimeSpentMn", "Document.TimeLeftMn", "dev.Main-dev-team",
+            "Document.CurrentEstimatedCompletionDate", "Document.CortexShareLinkRaw"
         ].join(",");
 
         const params = new URLSearchParams({

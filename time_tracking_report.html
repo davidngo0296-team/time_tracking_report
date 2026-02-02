@@ -2,6 +2,7 @@
 <html>
 
 <head>
+    <meta charset="UTF-8">
     <title>Time Tracking Report</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
@@ -56,6 +57,70 @@
             border-radius: 8px;
             padding: 15px;
             box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+        }
+
+        /* No ETA Section Styles */
+        .no-eta-group {
+            background: #fff;
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            overflow: hidden;
+        }
+
+        .no-eta-group-header {
+            background: #f8f9fa;
+            padding: 12px 15px;
+            font-weight: 600;
+            color: #333;
+            border-bottom: 1px solid #e0e0e0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .no-eta-group-header .count {
+            background: #e74c3c;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.85em;
+        }
+
+        .no-eta-task-list {
+            padding: 10px 15px;
+        }
+
+        .no-eta-task {
+            padding: 8px 0;
+            border-bottom: 1px solid #f0f0f0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .no-eta-task:last-child {
+            border-bottom: none;
+        }
+
+        .no-eta-task a {
+            color: #3498db;
+            text-decoration: none;
+        }
+
+        .no-eta-task a:hover {
+            text-decoration: underline;
+        }
+
+        .no-eta-task .assignee {
+            color: #888;
+            font-size: 0.9em;
+        }
+
+        /* Enhancement title link */
+        .enhancement-section h2 a:hover {
+            color: #3498db !important;
+            text-decoration: underline !important;
         }
 
         .chart-controls {
@@ -402,6 +467,15 @@
             <h2>Total Time Left by Team (Latest: <span id="global-date-display"></span>)</h2>
             <div id="team-charts-container" class="charts-container" style="flex-wrap: wrap;">
                 <!-- Team pie charts will be injected here -->
+            </div>
+        </div>
+
+        <div id="no-eta-section" class="enhancement-section" style="margin-top: 40px;">
+            <h2>&#9888; No ETA (Latest: <span id="no-eta-date-display"></span>)</h2>
+            <p style="color: #666; margin-bottom: 15px;">Tasks without an estimated completion date, grouped by
+                enhancement.</p>
+            <div id="no-eta-container">
+                <!-- No ETA tickets will be injected here -->
             </div>
         </div>
     </div>
@@ -959,12 +1033,82 @@
             chartInstances[canvasId] = new Chart(ctx, chartConfig);
         }
 
-        function createChartSection(container, title, index, groupedData) {
+        // Get ETA for an enhancement based on Development/QA task status
+        function getEnhancementETA(rawData, enhancementTitle, globalMaxDate) {
+            // Get tasks for this enhancement on the latest date
+            const enhancementTasks = rawData.filter(row =>
+                row['Enhancement title'] === enhancementTitle &&
+                row['Capture date'] === globalMaxDate
+            );
+
+            if (enhancementTasks.length === 0) return null;
+
+            const completedStatuses = ['implemented on dev', 'closed'];
+
+            // Find the main "Development" task (task title is exactly "Development")
+            const devTask = enhancementTasks.find(t =>
+                t['Task title'] && t['Task title'].toLowerCase() === 'development'
+            );
+
+            // Check if Development task exists and is NOT completed
+            if (devTask) {
+                const devStatus = (devTask['Status'] || '').toLowerCase();
+                if (!completedStatuses.includes(devStatus)) {
+                    // Use Development task ETA
+                    if (devTask['ETA'] && devTask['ETA'].trim()) {
+                        return formatETA(devTask['ETA']);
+                    }
+                }
+            }
+
+            // Development is done or not found, look for QA task
+            // Find main QA task (look for "QA" or "Defect - QA Vietnam" type tasks)
+            const qaTask = enhancementTasks.find(t =>
+                t['Task title'] && t['Task title'].toLowerCase() === 'qa'
+            ) || enhancementTasks.find(t =>
+                t['Type'] && t['Type'].toLowerCase().includes('qa')
+            );
+
+            if (qaTask && qaTask['ETA'] && qaTask['ETA'].trim()) {
+                return formatETA(qaTask['ETA']);
+            }
+
+            return null;
+        }
+
+        // Format ETA date to a cleaner format (e.g., "July 4, 2026")
+        function formatETA(etaString) {
+            // ETA comes in format like "06 February, 2026" - clean it up
+            const cleaned = etaString.replace(/^0/, '').trim();
+            return cleaned;
+        }
+
+        function createChartSection(container, title, index, groupedData, rawData, globalMaxDate) {
             const section = document.createElement('div');
             section.className = 'enhancement-section';
 
+            // Find ETA for this enhancement
+            const enhancementETA = getEnhancementETA(rawData, title, globalMaxDate);
+
+            // Find Ticket ID for this enhancement (to build URL)
+            const enhancementTask = rawData.find(row =>
+                row['Enhancement title'] === title &&
+                row['Capture date'] === globalMaxDate &&
+                row['Ticket ID']
+            );
+            const ticketId = enhancementTask ? enhancementTask['Ticket ID'] : null;
+            const enhancementUrl = ticketId ? `https://link.orangelogic.com/Tasks/${ticketId}` : null;
+
             const header = document.createElement('h2');
-            header.textContent = title;
+            let titleHtml = enhancementUrl
+                ? `<a href="${enhancementUrl}" target="_blank" style="color: inherit; text-decoration: none;">${title}</a>`
+                : title;
+
+            if (enhancementETA) {
+                header.innerHTML = `${titleHtml} <span style="color: #3498db; font-size: 0.8em; font-weight: normal;">(ETA ${enhancementETA})</span>`;
+            } else {
+                header.innerHTML = titleHtml;
+            }
             section.appendChild(header);
 
             const chartsDiv = document.createElement('div');
@@ -1173,6 +1317,91 @@
             });
         }
 
+        function createNoETASection(rawData, globalMaxDate) {
+            document.getElementById('no-eta-date-display').textContent = globalMaxDate;
+
+            // Allowed types and excluded statuses for No ETA filter (lowercase for comparison)
+            const allowedTypes = ['development', 'defect - qa vietnam'];
+            const excludedStatuses = ['obsolete', 'implemented on dev', 'closed'];
+
+            // Filter tasks from the latest date that have no ETA
+            const noETATasks = rawData.filter(row => {
+                const type = (row['Type'] || '').trim().toLowerCase();
+                const status = (row['Status'] || '').trim().toLowerCase();
+
+                return row['Capture date'] === globalMaxDate &&
+                    (!row['ETA'] || row['ETA'].trim() === '') &&
+                    allowedTypes.includes(type) &&
+                    !excludedStatuses.includes(status);
+            });
+
+            // Group by enhancement
+            const groupedByEnhancement = {};
+            noETATasks.forEach(row => {
+                const enhancement = row['Enhancement title'] || 'Unknown';
+                if (!groupedByEnhancement[enhancement]) {
+                    groupedByEnhancement[enhancement] = [];
+                }
+                groupedByEnhancement[enhancement].push({
+                    title: row['Task title'] || 'Untitled',
+                    assignee: row['Assignee'] || '(unassigned)',
+                    link: row['Cortex Link'] || ''
+                });
+            });
+
+            // Render the section
+            const container = document.getElementById('no-eta-container');
+            container.innerHTML = '';
+
+            const enhancements = Object.keys(groupedByEnhancement).sort();
+
+            if (enhancements.length === 0) {
+                container.innerHTML = '<p style="color: #27ae60;">✅ All tasks have an ETA assigned!</p>';
+                return;
+            }
+
+            enhancements.forEach(enhancement => {
+                const tasks = groupedByEnhancement[enhancement];
+
+                const group = document.createElement('div');
+                group.className = 'no-eta-group';
+
+                const header = document.createElement('div');
+                header.className = 'no-eta-group-header';
+                header.innerHTML = `
+                    <span>${enhancement}</span>
+                    <span class="count">${tasks.length}</span>
+                `;
+                group.appendChild(header);
+
+                const taskList = document.createElement('div');
+                taskList.className = 'no-eta-task-list';
+
+                tasks.forEach(task => {
+                    const taskDiv = document.createElement('div');
+                    taskDiv.className = 'no-eta-task';
+
+                    const titleSpan = document.createElement('span');
+                    if (task.link) {
+                        titleSpan.innerHTML = `<a href="${task.link}" target="_blank">${task.title}</a>`;
+                    } else {
+                        titleSpan.textContent = task.title;
+                    }
+
+                    const assigneeSpan = document.createElement('span');
+                    assigneeSpan.className = 'assignee';
+                    assigneeSpan.textContent = task.assignee;
+
+                    taskDiv.appendChild(titleSpan);
+                    taskDiv.appendChild(assigneeSpan);
+                    taskList.appendChild(taskDiv);
+                });
+
+                group.appendChild(taskList);
+                container.appendChild(group);
+            });
+        }
+
         fetch('Time_tracking_data.csv')
             .then(response => response.text())
             .then(csvText => {
@@ -1186,12 +1415,15 @@
                 Object.keys(groupedData).forEach((title, index) => {
                     const enhancementDates = groupedData[title].dates;
                     if (enhancementDates.includes(globalMaxDate)) {
-                        createChartSection(container, title, index, groupedData);
+                        createChartSection(container, title, index, groupedData, parsedData, globalMaxDate);
                     }
                 });
 
                 // Create Global Chart (pass rawData for team mapping)
                 createGlobalTimeLeftChart(groupedData, globalMaxDate, parsedData);
+
+                // Create No ETA Section
+                createNoETASection(parsedData, globalMaxDate);
 
                 // Auto-run risk check on load
                 checkRisk();
