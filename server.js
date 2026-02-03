@@ -122,6 +122,11 @@ async function runUpdateLogic(token, ticketIdsStr) {
         console.log("Migrating CSV to include Status...");
         trackingData.forEach(row => row['Status'] = '');
     }
+    // Migration: If no "Importance" field, add it
+    if (trackingData.length > 0 && !('Importance' in trackingData[0])) {
+        console.log("Migrating CSV to include Importance...");
+        trackingData.forEach(row => row['Importance'] = '');
+    }
 
     // Index for fast lookup
     const dataIndex = {};
@@ -165,6 +170,18 @@ async function runUpdateLogic(token, ticketIdsStr) {
         }
         if (enhancementTeam) {
             log(`  Team: ${enhancementTeam}`);
+        }
+
+        // Extract Importance for next release from the enhancement
+        const importanceField = enhancementTasks[0]["product.Importance-for-next-release"];
+        let enhancementImportance = "";
+        if (typeof importanceField === 'string') {
+            enhancementImportance = importanceField;
+        } else if (importanceField && importanceField.Value) {
+            enhancementImportance = importanceField.Value;
+        }
+        if (enhancementImportance) {
+            log(`  Importance: ${enhancementImportance}`);
         }
 
         // 2. Get Direct Children
@@ -219,7 +236,8 @@ async function runUpdateLogic(token, ticketIdsStr) {
                 'Main Dev Team': enhancementTeam,
                 'ETA': eta,
                 'Cortex Link': cortexLink,
-                'Status': status
+                'Status': status,
+                'Importance': enhancementImportance
             };
 
             // Backfill History Logic
@@ -266,7 +284,8 @@ function searchOLTask(query, token) {
             "CoreField.Title", "CoreField.Identifier", "SystemIdentifier",
             "CoreField.DocSubType", "CoreField.Status", "AssignedTo",
             "Document.TimeSpentMn", "Document.TimeLeftMn", "dev.Main-dev-team",
-            "Document.CurrentEstimatedCompletionDate", "Document.CortexShareLinkRaw"
+            "Document.CurrentEstimatedCompletionDate", "Document.CortexShareLinkRaw",
+            "product.Importance-for-next-release"
         ].join(",");
 
         const params = new URLSearchParams({
