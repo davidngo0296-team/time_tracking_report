@@ -8,13 +8,13 @@
     <style>
         body {
             font-family: sans-serif;
-            padding: 20px;
+            padding: 10px 15px;
             background-color: #f4f4f9;
             color: #333;
         }
 
         .container {
-            max-width: 1200px;
+            max-width: 98%;
             margin: 0 auto;
         }
 
@@ -28,17 +28,27 @@
         }
 
         .charts-container {
-            display: flex;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
             gap: 20px;
-            flex-wrap: wrap;
         }
 
         .chart-wrapper {
-            flex: 1;
-            min-width: 400px;
             height: 400px;
             display: flex;
             flex-direction: column;
+        }
+
+        @media (max-width: 1400px) {
+            .charts-container {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 900px) {
+            .charts-container {
+                grid-template-columns: 1fr;
+            }
         }
 
         /* Team charts grid layout */
@@ -158,6 +168,40 @@
         .floating-actions .manage-btn {
             background: linear-gradient(135deg, #3498db, #5dade2);
             color: white;
+        }
+
+        .floating-actions .clear-token-btn {
+            background: linear-gradient(135deg, #95a5a6, #bdc3c7);
+            color: white;
+            font-size: 0.8em;
+            padding: 8px 14px;
+        }
+
+        .enhancement-filter {
+            margin: 0 0 10px 0;
+            padding: 8px 12px;
+            background: #f8f9fa;
+            border-radius: 6px;
+            display: inline-block;
+        }
+
+        .enhancement-filter label {
+            font-weight: 500;
+            color: #555;
+            margin-right: 8px;
+        }
+
+        .enhancement-filter select {
+            padding: 5px 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background: white;
+            font-size: 0.9em;
+            cursor: pointer;
+        }
+
+        .enhancement-filter select:hover {
+            border-color: #3498db;
         }
 
         .chart-controls {
@@ -492,6 +536,9 @@
 
         <!-- Floating Action Buttons -->
         <div class="floating-actions">
+            <button id="clear-token-btn" class="clear-token-btn" onclick="clearToken()" title="Clear saved API token">
+                🔑 Clear Token
+            </button>
             <button id="manage-btn" class="manage-btn" onclick="openTicketModal()">
                 📋 Manage Tickets
             </button>
@@ -543,6 +590,12 @@
         let userToken = sessionStorage.getItem('ol_api_token') || '';
         let hasAddedTickets = false;
         let hasRemovedTickets = false;
+
+        function clearToken() {
+            userToken = '';
+            sessionStorage.removeItem('ol_api_token');
+            alert('Token cleared! Click "Update Data" to enter a new token.');
+        }
 
         function openTicketModal() {
             hasAddedTickets = false;
@@ -787,6 +840,10 @@
                 const spent = parseFloat(row['Time spent']) || 0;
                 const left = parseFloat(row['Time left']) || 0;
                 const taskTitle = row['Task title'];
+                const taskType = (row['Type'] || '').toLowerCase();
+                const taskStatus = (row['Status'] || '').toLowerCase();
+                const isQA = taskType.includes('qa');
+                const isBlocked = taskStatus.includes('blocked');
 
                 if (!enhancements[title]) {
                     enhancements[title] = { dates: new Set(), assignees: {} };
@@ -807,7 +864,9 @@
                 enhancements[title].assignees[assignee][date].tasks.push({
                     title: taskTitle,
                     spent: spent,
-                    left: left
+                    left: left,
+                    isQA: isQA,
+                    isBlocked: isBlocked
                 });
             });
 
@@ -854,7 +913,8 @@
 
             // 1. Aggregate Time Left per Developer across ALL enhancements
             Object.keys(chartStore).forEach(canvasId => {
-                if (canvasId.includes('chart-left')) {
+                // Match chart-left-X but exclude chart-left-blocked-X
+                if (/^chart-left-\d+$/.test(canvasId)) {
                     const data = chartStore[canvasId];
                     const enhancementTitle = data.enhancementTitle;
 
@@ -963,6 +1023,44 @@
                 return lines;
             };
 
+            // Calculate shared Y-axis max for linked Time Left charts
+            let sharedYMax = null;
+            if (type === 'bar' && isTimeLeftChart) {
+                // Extract the enhancement index from the canvas ID
+                const indexMatch = canvasId.match(/\d+$/);
+                if (indexMatch) {
+                    const enhIndex = indexMatch[0];
+                    const leftChartId = `chart-left-${enhIndex}`;
+                    const blockedChartId = `chart-left-blocked-${enhIndex}`;
+
+                    // Helper to calculate stacked totals per date
+                    const getStackedMax = (chartId) => {
+                        if (!chartStore[chartId] || !chartStore[chartId].barDatasets.length) return 0;
+                        const datasets = chartStore[chartId].barDatasets;
+                        const numDates = datasets[0].data.length;
+                        let maxStackedTotal = 0;
+
+                        for (let dateIdx = 0; dateIdx < numDates; dateIdx++) {
+                            let stackedTotal = 0;
+                            datasets.forEach(ds => {
+                                stackedTotal += (ds.data[dateIdx] || 0);
+                            });
+                            if (stackedTotal > maxStackedTotal) {
+                                maxStackedTotal = stackedTotal;
+                            }
+                        }
+                        return maxStackedTotal;
+                    };
+
+                    const maxFromLeft = getStackedMax(leftChartId);
+                    const maxFromBlocked = getStackedMax(blockedChartId);
+
+                    // Use the max of both, add 10% padding
+                    sharedYMax = Math.max(maxFromLeft, maxFromBlocked) * 1.1;
+                    if (sharedYMax === 0) sharedYMax = null; // Let Chart.js auto-scale if no data
+                }
+            }
+
             let chartConfig;
 
             if (type === 'bar') {
@@ -977,7 +1075,12 @@
                         maintainAspectRatio: false,
                         scales: {
                             x: { stacked: true, title: { display: true, text: 'Date' } },
-                            y: { stacked: true, beginAtZero: true, title: { display: true, text: 'Time (Hours)' } }
+                            y: {
+                                stacked: true,
+                                beginAtZero: true,
+                                title: { display: true, text: 'Time (Hours)' },
+                                max: sharedYMax
+                            }
                         },
                         plugins: {
                             legend: {
@@ -1160,21 +1263,54 @@
             }
             section.appendChild(header);
 
+            // Task type filter
+            const filterDiv = document.createElement('div');
+            filterDiv.className = 'enhancement-filter';
+            filterDiv.innerHTML = `
+                <label>Filter: </label>
+                <select id="filter-${index}" onchange="applyEnhancementFilter(${index}, this.value)">
+                    <option value="all">All Tasks</option>
+                    <option value="qa">QA Tasks</option>
+                    <option value="non-qa">Non-QA Tasks</option>
+                </select>
+            `;
+            section.appendChild(filterDiv);
+
             const chartsDiv = document.createElement('div');
             chartsDiv.className = 'charts-container';
+            chartsDiv.id = `charts-container-${index}`;
 
             // Common Data extraction
             const dates = groupedData[title].dates;
             const latestDate = dates[dates.length - 1];
             const assignees = Object.keys(groupedData[title].assignees);
 
-            // Helper to build store data
-            const buildStoreData = (metricKey, label) => {
+            // Helper to build store data with filter support
+            const buildStoreData = (metricKey, label, filterFn = null, blockedOnly = false) => {
                 const barDatasets = assignees.map((assignee, i) => {
-                    // Filter tasks for this metric (e.g., only show tasks with > 0 time left if metric is 'left')
                     const rawTasksArray = groupedData[title].assignees[assignee].tasks;
+
+                    // Calculate filtered values per day
+                    const filteredValues = rawTasksArray.map(dayTasks => {
+                        let filtered = dayTasks;
+                        if (filterFn) {
+                            filtered = filtered.filter(filterFn);
+                        }
+                        if (blockedOnly) {
+                            filtered = filtered.filter(t => t.isBlocked);
+                        }
+                        return filtered.reduce((sum, t) => sum + (t[metricKey] || 0), 0) / 60;
+                    });
+
                     const formattedTasksArray = rawTasksArray.map(dayTasks => {
-                        return dayTasks
+                        let filtered = dayTasks;
+                        if (filterFn) {
+                            filtered = filtered.filter(filterFn);
+                        }
+                        if (blockedOnly) {
+                            filtered = filtered.filter(t => t.isBlocked);
+                        }
+                        return filtered
                             .filter(t => t[metricKey] > 0)
                             .sort((a, b) => b[metricKey] - a[metricKey])
                             .map(t => `[${(t[metricKey] / 60).toFixed(2)} hrs] ${t.title}`);
@@ -1182,7 +1318,7 @@
 
                     return {
                         label: assignee,
-                        data: groupedData[title].assignees[assignee][metricKey],
+                        data: filteredValues,
                         tasks: formattedTasksArray,
                         backgroundColor: colors[i % colors.length]
                     };
@@ -1195,20 +1331,18 @@
                 const latestTasks = [];
 
                 assignees.forEach((assignee, i) => {
-                    const val = groupedData[title].assignees[assignee][metricKey][dates.length - 1];
-                    // Only show if value > 0
+                    const val = barDatasets[i].data[dates.length - 1];
                     if (val > 0) {
                         latestLabels.push(assignee);
-                        latestValues.push(val);
+                        latestValues.push(parseFloat(val.toFixed(2)));
                         latestColors.push(colors[i % colors.length]);
-                        // Get the tasks for the latest date from the corresponding bar dataset
                         latestTasks.push(barDatasets[i].tasks[dates.length - 1]);
                     }
                 });
 
                 return {
                     title: label,
-                    enhancementTitle: title, // Store Enhancement Title for Risk Report
+                    enhancementTitle: title,
                     dates: dates,
                     latestDate: latestDate,
                     barDatasets: barDatasets,
@@ -1221,10 +1355,26 @@
                 };
             };
 
-            // Create 2 charts
-            ['Spent', 'Left'].forEach(metric => {
-                const metricKey = metric.toLowerCase();
-                const canvasId = `chart-${metricKey}-${index}`;
+            // Store enhancement info for filter updates
+            if (!window.enhancementInfo) window.enhancementInfo = {};
+            window.enhancementInfo[index] = {
+                title: title,
+                groupedData: groupedData,
+                dates: dates,
+                latestDate: latestDate,
+                assignees: assignees,
+                buildStoreData: buildStoreData
+            };
+
+            // Create 3 charts: Spent, Left, Blocked
+            const chartConfigs = [
+                { metric: 'Spent', key: 'spent', blockedOnly: false },
+                { metric: 'Left', key: 'left', blockedOnly: false },
+                { metric: 'Blocked', key: 'left', blockedOnly: true }
+            ];
+
+            chartConfigs.forEach(config => {
+                const canvasId = `chart-${config.key}${config.blockedOnly ? '-blocked' : ''}-${index}`;
 
                 // Wrapper
                 const wrapper = document.createElement('div');
@@ -1250,7 +1400,8 @@
                 chartsDiv.appendChild(wrapper);
 
                 // Store Data
-                chartStore[canvasId] = buildStoreData(metricKey, `Time ${metric}`);
+                const chartLabel = config.blockedOnly ? 'Time Left (Blocked)' : `Time ${config.metric}`;
+                chartStore[canvasId] = buildStoreData(config.key, chartLabel, null, config.blockedOnly);
             });
 
             section.appendChild(chartsDiv);
@@ -1259,6 +1410,37 @@
             // Initial Render
             renderChart(`chart-spent-${index}`, 'bar');
             renderChart(`chart-left-${index}`, 'bar');
+            renderChart(`chart-left-blocked-${index}`, 'bar');
+        }
+
+        // Function to apply enhancement filter
+        function applyEnhancementFilter(index, filterValue) {
+            const info = window.enhancementInfo[index];
+            if (!info) return;
+
+            let filterFn = null;
+            if (filterValue === 'qa') {
+                filterFn = t => t.isQA;
+            } else if (filterValue === 'non-qa') {
+                filterFn = t => !t.isQA;
+            }
+
+            const chartConfigs = [
+                { metric: 'Spent', key: 'spent', blockedOnly: false },
+                { metric: 'Left', key: 'left', blockedOnly: false },
+                { metric: 'Blocked', key: 'left', blockedOnly: true }
+            ];
+
+            chartConfigs.forEach(config => {
+                const canvasId = `chart-${config.key}${config.blockedOnly ? '-blocked' : ''}-${index}`;
+                const chartLabel = config.blockedOnly ? 'Time Left (Blocked)' : `Time ${config.metric}`;
+                chartStore[canvasId] = info.buildStoreData(config.key, chartLabel, filterFn, config.blockedOnly);
+
+                // Re-render the chart with current view type
+                const chart = chartInstances[canvasId];
+                const viewType = chart ? chart.config.type : 'bar';
+                renderChart(canvasId, viewType);
+            });
         }
 
         function createGlobalTimeLeftChart(groupedData, globalMaxDate, rawData) {
@@ -1371,7 +1553,7 @@
 
             // Allowed types and excluded statuses for No ETA filter (lowercase for comparison)
             const allowedTypes = ['development', 'defect - qa vietnam'];
-            const excludedStatuses = ['obsolete', 'implemented on dev', 'closed'];
+            const excludedStatuses = ['obsolete', 'implemented on dev', 'closed', 'duplicate'];
 
             // Filter tasks from the latest date that have no ETA
             const noETATasks = rawData.filter(row => {
