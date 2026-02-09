@@ -872,6 +872,13 @@ function buildGanttData(rawData, enhancementTitle, globalMaxDate) {
         row['Capture date'] === globalMaxDate
     );
 
+    // Build set of identifiers that are parents (have at least 1 child)
+    const parentIds = new Set();
+    tasks.forEach(row => {
+        const pf = (row['Parent Folder'] || '').trim();
+        if (pf) parentIds.add(pf);
+    });
+
     // Build task map by identifier for dependency resolution
     const taskMap = {};
     const ganttTasks = [];
@@ -912,7 +919,8 @@ function buildGanttData(rawData, enhancementTitle, globalMaxDate) {
             status: status,
             type: type,
             link: row['Cortex Link'] || '',
-            isBlocked: status.includes('blocked')
+            isBlocked: status.includes('blocked'),
+            isContainer: timeLeftMinutes === 10 && parentIds.has(taskId)
         };
 
         taskMap[taskId] = task;
@@ -1180,7 +1188,7 @@ function renderGanttChart(container, ganttData) {
             // Task label
             const taskLabel = document.createElement('span');
             taskLabel.className = 'gantt-bar-label';
-            taskLabel.textContent = truncateText(task.title, 35);
+            taskLabel.textContent = (task.isContainer ? '\uD83D\uDCC1 ' : '') + truncateText(task.title, 35);
             bar.appendChild(taskLabel);
 
             // Click to open task link
@@ -1258,14 +1266,15 @@ function renderGanttChart(container, ganttData) {
                 task.status.includes('in progress') ? 'in-progress' : '';
 
             const titleCell = document.createElement('td');
+            const displayTitle = (task.isContainer ? '\uD83D\uDCC1 ' : '') + task.title;
             if (task.link) {
                 const a = document.createElement('a');
                 a.href = task.link;
                 a.target = '_blank';
-                a.textContent = task.title;
+                a.textContent = displayTitle;
                 titleCell.appendChild(a);
             } else {
-                titleCell.textContent = task.title;
+                titleCell.textContent = displayTitle;
             }
 
             const assigneeCell = document.createElement('td');
