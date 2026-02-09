@@ -494,7 +494,7 @@ function createChartSection(container, title, index, groupedData, rawData, globa
         <select id="filter-${index}" onchange="applyEnhancementFilter(${index}, this.value)">
             <option value="all">All Tasks</option>
             <option value="qa">QA Tasks</option>
-            <option value="non-qa">Non-QA Tasks</option>
+            <option value="non-qa" selected>Non-QA Tasks</option>
         </select>
         <button class="gantt-btn" onclick="openGanttModal(${index})" title="View Gantt Chart">
             📊 Gantt Chart
@@ -623,7 +623,7 @@ function createChartSection(container, title, index, groupedData, rawData, globa
         chartsDiv.appendChild(wrapper);
 
         const chartLabel = config.blockedOnly ? 'Time Left (Blocked)' : `Time ${config.metric}`;
-        chartStore[canvasId] = buildStoreData(config.key, chartLabel, null, config.blockedOnly);
+        chartStore[canvasId] = buildStoreData(config.key, chartLabel, t => !t.isQA, config.blockedOnly);
     });
 
     section.appendChild(chartsDiv);
