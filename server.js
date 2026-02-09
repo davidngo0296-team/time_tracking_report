@@ -103,7 +103,8 @@ const server = http.createServer((req, res) => {
 
 // --- Logic ---
 
-const ALLOWED_TYPES = ["Development", "Configuration Request", "Defect - QA Vietnam", "Question"];
+const ALLOWED_TYPES = ["Development", "Configuration Request", "Defect - QA Vietnam", "Question", "QA"];
+const CONTAINER_TYPES = ["Development", "QA"];
 const IGNORED_STATUSES = ["Obsolete", "Duplicate", "Closed", "Needs Peer Review", "Implemented on Dev", "In Revision"];
 
 async function runUpdateLogic(token, ticketIdsStr) {
@@ -177,7 +178,7 @@ async function runUpdateLogic(token, ticketIdsStr) {
     // Index for fast lookup
     const dataIndex = {};
     trackingData.forEach((row, i) => {
-        const key = `${row['Capture date']}|${row['Enhancement title']}|${row['Task title']}`;
+        const key = `${row['Capture date']}|${row['Enhancement title']}|${row['Task title']}|${row['Task Identifier'] || ''}`;
         dataIndex[key] = i;
     });
 
@@ -237,15 +238,13 @@ async function runUpdateLogic(token, ticketIdsStr) {
 
         let allTasks = [...directChildren];
 
-        // 3. Find 'Development' folder and its children
+        // 3. Find 'Development' folder and recursively get all descendants
         const devTask = directChildren.find(t => t["CoreField.Title"] === "Development");
         if (devTask) {
             const devId = devTask["CoreField.Identifier"];
             log(`    Found Development container: ${devId}`);
-            const devChildren = await searchOLTask(`Parentfolderidentifier:("${devId}")`, token);
-            if (devChildren) {
-                allTasks.push(...devChildren);
-            }
+            const devDescendants = await getAllDescendants(devId, token, log);
+            allTasks.push(...devDescendants);
         }
 
         // 4. Process Tasks
@@ -282,7 +281,7 @@ async function runUpdateLogic(token, ticketIdsStr) {
                 timeLeft = "0";
             }
 
-            const rowKey = `${captureDate}|${enhancementTitle}|${taskTitle}`;
+            const rowKey = `${captureDate}|${enhancementTitle}|${taskTitle}|${taskIdentifier}`;
 
             const newRow = {
                 'Capture date': captureDate,
@@ -342,6 +341,31 @@ async function runUpdateLogic(token, ticketIdsStr) {
 }
 
 // --- Utils ---
+
+async function getAllDescendants(parentId, token, log, depth = 1) {
+    if (depth > 10) return []; // Safety limit
+    const children = await searchOLTask(`Parentfolderidentifier:("${parentId}")`, token);
+    if (!children || children.length === 0) return [];
+
+    const indent = '    ' + '  '.repeat(depth);
+    let all = [];
+    for (const child of children) {
+        const childId = child["CoreField.Identifier"];
+        const childTitle = child["CoreField.Title"];
+        const childType = (child["CoreField.DocSubType"] || '').trim();
+
+        if (!ALLOWED_TYPES.includes(childType)) continue; // Skip non-allowed types
+
+        all.push(child);
+        // Only recurse into container types (Development, QA)
+        if (childId && CONTAINER_TYPES.includes(childType)) {
+            log(`${indent}Checking children of: ${childTitle} (${childId})`);
+            const descendants = await getAllDescendants(childId, token, log, depth + 1);
+            all.push(...descendants);
+        }
+    }
+    return all;
+}
 
 function searchOLTask(query, token) {
     return new Promise((resolve, reject) => {

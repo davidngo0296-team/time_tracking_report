@@ -172,6 +172,56 @@ function updateData() {
         });
 }
 
+function reloadEnhancement(ticketId, btn) {
+    if (!userToken) {
+        userToken = prompt("Please enter your OrangeLogic API Token:");
+        if (!userToken) return;
+        sessionStorage.setItem('ol_api_token', userToken);
+    }
+
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '⏳ Reloading...';
+    btn.disabled = true;
+
+    fetch('/run-update-script', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            token: userToken,
+            ticketIds: ticketId
+        })
+    })
+        .then(async response => {
+            if (!response.ok) {
+                const text = await response.text();
+                throw new Error(`Server returned ${response.status}: ${text}`);
+            }
+            const contentType = response.headers.get('content-type');
+            if (contentType && contentType.includes('application/json')) {
+                return response.json();
+            }
+            return {};
+        })
+        .then(result => {
+            if (result.error) {
+                if (result.error.toLowerCase().includes('token') || result.error.includes('401') || result.error.includes('403')) {
+                    userToken = '';
+                    sessionStorage.removeItem('ol_api_token');
+                    throw new Error("Invalid Token.\n\n" + result.error);
+                }
+                throw new Error(result.error);
+            }
+            location.reload();
+        })
+        .catch(error => {
+            showErrorModal(error.message);
+        })
+        .finally(() => {
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+        });
+}
+
 // --- Initialization ---
 function initializeApp() {
     // Render tickets UI

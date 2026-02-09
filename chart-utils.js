@@ -434,21 +434,9 @@ function getEnhancementETA(rawData, enhancementTitle, globalMaxDate) {
 
     if (devTask) {
         const devStatus = (devTask['Status'] || '').toLowerCase();
-        if (!completedStatuses.includes(devStatus)) {
-            if (devTask['ETA'] && devTask['ETA'].trim()) {
-                return formatETA(devTask['ETA']);
-            }
+        if (!completedStatuses.includes(devStatus) && devTask['ETA'] && devTask['ETA'].trim()) {
+            return formatETA(devTask['ETA']);
         }
-    }
-
-    const qaTask = enhancementTasks.find(t =>
-        t['Task title'] && t['Task title'].toLowerCase() === 'qa'
-    ) || enhancementTasks.find(t =>
-        t['Type'] && t['Type'].toLowerCase().includes('qa')
-    );
-
-    if (qaTask && qaTask['ETA'] && qaTask['ETA'].trim()) {
-        return formatETA(qaTask['ETA']);
     }
 
     return null;
@@ -511,6 +499,9 @@ function createChartSection(container, title, index, groupedData, rawData, globa
         <button class="gantt-btn" onclick="openGanttModal(${index})" title="View Gantt Chart">
             📊 Gantt Chart
         </button>
+        ${ticketId ? `<button class="reload-btn" onclick="reloadEnhancement('${ticketId}', this)" title="Reload data for this enhancement">
+            🔄 Reload
+        </button>` : ''}
     `;
     section.appendChild(filterDiv);
 
@@ -930,13 +921,15 @@ function buildGanttData(rawData, enhancementTitle, globalMaxDate) {
     today.setHours(0, 0, 0, 0);
 
     // Separate tasks with ETA from tasks without
+    // A task needs a real end date to appear on the calendar (estimatedEnd or eta as fallback)
     const etaTasks = [];
     const noEtaTasks = [];
     ganttTasks.forEach(task => {
-        if (!task.estimatedStart && !task.estimatedEnd) {
-            noEtaTasks.push(task);
-        } else {
+        const hasEndDate = task.estimatedEnd || task.eta;
+        if (hasEndDate) {
             etaTasks.push(task);
+        } else {
+            noEtaTasks.push(task);
         }
     });
 
@@ -953,38 +946,34 @@ function buildGanttData(rawData, enhancementTitle, globalMaxDate) {
     Object.keys(assigneeGroups).forEach(assignee => {
         const assigneeTasks = assigneeGroups[assignee];
 
-        // Sort by estimated start date, then by ETA, then by time left
-        assigneeTasks.sort((a, b) => {
-            // Blocked tasks at the end
-            if (a.isBlocked && !b.isBlocked) return 1;
-            if (!a.isBlocked && b.isBlocked) return -1;
-            // Then by estimated start date (earliest first)
-            if (a.estimatedStart && b.estimatedStart) return a.estimatedStart - b.estimatedStart;
-            if (a.estimatedStart) return -1;
-            if (b.estimatedStart) return 1;
-            // Then by ETA (earliest first)
-            if (a.eta && b.eta) return a.eta - b.eta;
-            if (a.eta) return -1;
-            if (b.eta) return 1;
-            // Then by time left (smallest first)
-            return a.timeLeft - b.timeLeft;
-        });
-
+        // Calculate dates first
         assigneeTasks.forEach(task => {
             if (task.estimatedStart && task.estimatedEnd) {
                 task.startDate = new Date(task.estimatedStart);
                 task.endDate = new Date(task.estimatedEnd);
             } else if (task.estimatedStart) {
                 task.startDate = new Date(task.estimatedStart);
-                const daysNeeded = Math.max(1, Math.ceil(task.timeLeft / 8));
-                task.endDate = new Date(task.startDate);
-                task.endDate.setDate(task.endDate.getDate() + daysNeeded);
+                if (task.eta) {
+                    task.endDate = new Date(task.eta);
+                } else {
+                    const daysNeeded = Math.max(1, Math.ceil(task.timeLeft / 8));
+                    task.endDate = new Date(task.startDate);
+                    task.endDate.setDate(task.endDate.getDate() + daysNeeded);
+                }
             } else if (task.estimatedEnd) {
                 task.endDate = new Date(task.estimatedEnd);
                 const daysNeeded = Math.max(1, Math.ceil(task.timeLeft / 8));
                 task.startDate = new Date(task.endDate);
                 task.startDate.setDate(task.startDate.getDate() - daysNeeded);
             }
+        });
+
+        // Sort by soonest end date on top
+        assigneeTasks.sort((a, b) => {
+            if (a.endDate && b.endDate) return a.endDate - b.endDate;
+            if (a.endDate) return -1;
+            if (b.endDate) return 1;
+            return 0;
         });
     });
 
@@ -1132,8 +1121,13 @@ function renderGanttChart(container, ganttData) {
             barsContainer.appendChild(gridLine);
         }
 
-        // Add task bars for this assignee
-        const assigneeTasks = tasks.filter(t => t.assignee === assignee);
+        // Add task bars for this assignee, sorted by soonest end date first
+        const assigneeTasks = tasks.filter(t => t.assignee === assignee).sort((a, b) => {
+            if (a.endDate && b.endDate) return a.endDate - b.endDate;
+            if (a.endDate) return -1;
+            if (b.endDate) return 1;
+            return 0;
+        });
         let renderedTaskCount = 0; // Track actual rendered tasks
 
         // Create a bars layer for the absolute positioned task bars
@@ -1145,7 +1139,7 @@ function renderGanttChart(container, ganttData) {
             if (!task.startDate || !task.endDate) return;
 
             const startOffset = Math.floor((task.startDate - minDate) / (1000 * 60 * 60 * 24));
-            const duration = Math.ceil((task.endDate - task.startDate) / (1000 * 60 * 60 * 24));
+            const duration = Math.ceil((task.endDate - task.startDate) / (1000 * 60 * 60 * 24)) + 1;
 
             // Create a bar slot (one row of the stacked bars)
             const barSlot = document.createElement('div');

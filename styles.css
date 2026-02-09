@@ -537,6 +537,31 @@ h2 {
     box-shadow: 0 2px 8px rgba(155, 89, 182, 0.4);
 }
 
+.reload-btn {
+    background: linear-gradient(135deg, #27ae60, #219a52);
+    color: white;
+    border: none;
+    padding: 6px 14px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9em;
+    font-weight: 500;
+    margin-left: 8px;
+    transition: all 0.2s;
+}
+
+.reload-btn:hover {
+    background: linear-gradient(135deg, #219a52, #1e8449);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(39, 174, 96, 0.4);
+}
+
+.reload-btn:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+    transform: none;
+}
+
 /* Gantt Modal */
 #gantt-modal .modal-content {
     max-width: 95%;
