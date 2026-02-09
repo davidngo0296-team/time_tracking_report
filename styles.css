@@ -1,0 +1,485 @@
+/* Time Tracking Report Styles */
+
+body {
+    font-family: sans-serif;
+    padding: 10px 15px;
+    background-color: #f4f4f9;
+    color: #333;
+}
+
+.container {
+    max-width: 98%;
+    margin: 0 auto;
+}
+
+.enhancement-section {
+    background: #fff;
+    border: 1px solid #e0e0e0;
+    padding: 20px;
+    margin-bottom: 30px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.charts-container {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+}
+
+.chart-wrapper {
+    height: 400px;
+    display: flex;
+    flex-direction: column;
+}
+
+@media (max-width: 1400px) {
+    .charts-container {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 900px) {
+    .charts-container {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Team charts grid layout */
+#team-charts-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+    gap: 30px;
+    padding: 10px 0;
+}
+
+#team-charts-container .chart-wrapper {
+    flex: none;
+    min-width: unset;
+    height: 350px;
+    background: #fafafa;
+    border-radius: 8px;
+    padding: 15px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+/* No ETA Section Styles */
+.no-eta-group {
+    background: #fff;
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    margin-bottom: 15px;
+    overflow: hidden;
+}
+
+.no-eta-group-header {
+    background: #f8f9fa;
+    padding: 12px 15px;
+    font-weight: 600;
+    color: #333;
+    border-bottom: 1px solid #e0e0e0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.no-eta-group-header .count {
+    background: #e74c3c;
+    color: white;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 0.85em;
+}
+
+.no-eta-task-list {
+    padding: 10px 15px;
+}
+
+.no-eta-task {
+    padding: 8px 0;
+    border-bottom: 1px solid #f0f0f0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.no-eta-task:last-child {
+    border-bottom: none;
+}
+
+.no-eta-task a {
+    color: #3498db;
+    text-decoration: none;
+}
+
+.no-eta-task a:hover {
+    text-decoration: underline;
+}
+
+.no-eta-task .assignee {
+    color: #888;
+    font-size: 0.9em;
+}
+
+/* Enhancement title link */
+.enhancement-section h2 a:hover {
+    color: #3498db !important;
+    text-decoration: underline !important;
+}
+
+/* Floating Action Buttons */
+.floating-actions {
+    position: fixed;
+    bottom: 30px;
+    right: 30px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    z-index: 1000;
+}
+
+.floating-actions button {
+    padding: 12px 20px;
+    border: none;
+    border-radius: 25px;
+    cursor: pointer;
+    font-size: 0.9em;
+    font-weight: 600;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+    transition: all 0.2s ease;
+}
+
+.floating-actions button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
+}
+
+.floating-actions .update-btn {
+    background: linear-gradient(135deg, #27ae60, #2ecc71);
+    color: white;
+}
+
+.floating-actions .manage-btn {
+    background: linear-gradient(135deg, #3498db, #5dade2);
+    color: white;
+}
+
+.floating-actions .clear-token-btn {
+    background: linear-gradient(135deg, #95a5a6, #bdc3c7);
+    color: white;
+    font-size: 0.8em;
+    padding: 8px 14px;
+}
+
+.enhancement-filter {
+    margin: 0 0 10px 0;
+    padding: 8px 12px;
+    background: #f8f9fa;
+    border-radius: 6px;
+    display: inline-block;
+}
+
+.enhancement-filter label {
+    font-weight: 500;
+    color: #555;
+    margin-right: 8px;
+}
+
+.enhancement-filter select {
+    padding: 5px 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    background: white;
+    font-size: 0.9em;
+    cursor: pointer;
+}
+
+.enhancement-filter select:hover {
+    border-color: #3498db;
+}
+
+.chart-controls {
+    text-align: right;
+    margin-bottom: 5px;
+}
+
+.chart-btn {
+    background: #f8f9fa;
+    border: 1px solid #ddd;
+    padding: 4px 12px;
+    cursor: pointer;
+    border-radius: 4px;
+    font-size: 0.85em;
+    color: #555;
+    transition: all 0.2s;
+}
+
+.chart-btn:hover {
+    background: #e2e6ea;
+}
+
+.chart-btn.active {
+    background: #3498db;
+    color: white;
+    border-color: #2980b9;
+}
+
+.canvas-holder {
+    flex: 1;
+    position: relative;
+    min-height: 0;
+}
+
+.risk-controls {
+    background: #fff;
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.risk-controls label {
+    font-weight: bold;
+}
+
+.risk-controls input {
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    width: 100px;
+}
+
+.risk-btn {
+    background: #e74c3c;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+.risk-btn:hover {
+    background: #c0392b;
+}
+
+#risk-report {
+    margin-bottom: 30px;
+}
+
+.risk-item {
+    background: #fff;
+    border-left: 5px solid #e74c3c;
+    padding: 15px;
+    margin-bottom: 15px;
+    border-radius: 4px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.risk-item h3 {
+    margin: 0 0 10px 0;
+    color: #c0392b;
+    font-size: 1.1em;
+}
+
+.risk-item ul {
+    margin: 0;
+    padding-left: 20px;
+}
+
+.risk-item li {
+    margin-bottom: 5px;
+    color: #555;
+}
+
+.risk-time {
+    font-weight: bold;
+    color: #333;
+}
+
+h1 {
+    text-align: center;
+    margin-bottom: 40px;
+    color: #2c3e50;
+}
+
+h2 {
+    color: #2c3e50;
+    border-bottom: 2px solid #3498db;
+    padding-bottom: 10px;
+    margin-top: 0;
+    font-size: 1.4em;
+}
+
+.update-btn {
+    background-color: #3498db;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    transition: background-color 0.2s;
+}
+
+.update-btn:hover {
+    background-color: #2980b9;
+}
+
+.update-btn:disabled {
+    background-color: #95a5a6;
+    cursor: not-allowed;
+}
+
+/* Modal Styles */
+.modal-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+    justify-content: center;
+    align-items: center;
+}
+
+.modal-overlay.show {
+    display: flex;
+}
+
+.modal-content {
+    background: white;
+    padding: 25px;
+    border-radius: 8px;
+    max-width: 500px;
+    width: 90%;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    border-left: 5px solid #e74c3c;
+}
+
+.modal-header {
+    color: #c0392b;
+    font-size: 1.25em;
+    margin-bottom: 15px;
+    font-weight: bold;
+}
+
+.modal-body {
+    color: #333;
+    margin-bottom: 20px;
+    line-height: 1.5;
+    white-space: pre-wrap;
+}
+
+.modal-footer {
+    text-align: right;
+}
+
+.modal-btn {
+    background: #e74c3c;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.modal-btn:hover {
+    background: #c0392b;
+}
+
+/* Ticket Management Styles */
+.ticket-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.manage-btn {
+    background-color: #f39c12;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    transition: background-color 0.2s;
+}
+
+.manage-btn:hover {
+    background-color: #d35400;
+}
+
+.ticket-input-group {
+    display: flex;
+    gap: 10px;
+    flex-grow: 1;
+}
+
+.ticket-input-group input {
+    flex-grow: 1;
+    padding: 8px;
+    border: 1px solid #bdc3c7;
+    border-radius: 4px;
+}
+
+.add-btn {
+    background-color: #2ecc71;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+.add-btn:hover {
+    background-color: #27ae60;
+}
+
+.ticket-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 10px;
+    width: 100%;
+}
+
+.ticket-tag {
+    background: #fff;
+    padding: 5px 10px;
+    border-radius: 15px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.9em;
+    color: #2c3e50;
+}
+
+.remove-ticket {
+    color: #e74c3c;
+    cursor: pointer;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+}
+
+.remove-ticket:hover {
+    background: #fdeaea;
+}

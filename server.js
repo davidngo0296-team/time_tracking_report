@@ -26,6 +26,27 @@ const server = http.createServer((req, res) => {
         return;
     }
 
+    // Serve static files (CSS, JS)
+    const staticFiles = {
+        '/styles.css': { file: 'styles.css', type: 'text/css' },
+        '/chart-utils.js': { file: 'chart-utils.js', type: 'application/javascript' },
+        '/app.js': { file: 'app.js', type: 'application/javascript' }
+    };
+
+    if (req.method === 'GET' && staticFiles[req.url]) {
+        const { file, type } = staticFiles[req.url];
+        fs.readFile(path.join(__dirname, file), (err, data) => {
+            if (err) {
+                res.writeHead(404);
+                res.end(`${file} not found`);
+                return;
+            }
+            res.writeHead(200, { 'Content-Type': type });
+            res.end(data);
+        });
+        return;
+    }
+
     // Serve CSV
     if (req.method === 'GET' && req.url.replace(/%20/g, ' ').includes(CSV_FILE)) {
         fs.readFile(path.join(__dirname, CSV_FILE), (err, data) => {
