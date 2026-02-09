@@ -872,11 +872,7 @@ const ganttDataStore = {};
 let ganttChartInstance = null;
 
 /**
- * Build Gantt chart data for an enhancement
- * @param {Array} rawData - All CSV data
- * @param {string} enhancementTitle - The enhancement to build Gantt for
- * @param {string} globalMaxDate - Latest date in data
- * @returns {Object} Gantt data structure
+ * Build Gantt data for a specific enhancement
  */
 function buildGanttData(rawData, enhancementTitle, globalMaxDate) {
     // Filter tasks for this enhancement on the latest date
@@ -892,12 +888,15 @@ function buildGanttData(rawData, enhancementTitle, globalMaxDate) {
     // First pass: collect all tasks
     tasks.forEach(row => {
         const taskId = row['Task Identifier'] || row['Task title'];
+
         const timeLeftMinutes = parseFloat(row['Time left']) || 0;
         const timeLeftHours = timeLeftMinutes / 60;
         const etaRaw = row['ETA'] || '';
         const dependencies = (row['Dependencies'] || '').split(';').filter(d => d.trim());
         const status = (row['Status'] || '').toLowerCase();
         const type = row['Type'] || '';
+        const estimatedStartRaw = row['Estimated Start Date'] || '';
+        const estimatedEndRaw = row['Estimated End Date'] || '';
 
         // Skip tasks with no time left or closed/obsolete
         const skipStatuses = ['obsolete', 'duplicate', 'closed', 'implemented on dev'];
@@ -905,12 +904,16 @@ function buildGanttData(rawData, enhancementTitle, globalMaxDate) {
             return;
         }
 
+
+
         const task = {
             id: taskId,
             title: row['Task title'],
             assignee: row['Assignee'] || '(unassigned)',
             timeLeft: timeLeftHours,
             eta: etaRaw ? parseETADate(etaRaw) : null,
+            estimatedStart: estimatedStartRaw ? parseETADate(estimatedStartRaw) : null,
+            estimatedEnd: estimatedEndRaw ? parseETADate(estimatedEndRaw) : null,
             dependencies: dependencies,
             status: status,
             type: type,
@@ -926,9 +929,20 @@ function buildGanttData(rawData, enhancementTitle, globalMaxDate) {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    // Group tasks by assignee
-    const assigneeGroups = {};
+    // Separate tasks with ETA from tasks without
+    const etaTasks = [];
+    const noEtaTasks = [];
     ganttTasks.forEach(task => {
+        if (!task.estimatedStart && !task.estimatedEnd) {
+            noEtaTasks.push(task);
+        } else {
+            etaTasks.push(task);
+        }
+    });
+
+    // Group ETA tasks by assignee
+    const assigneeGroups = {};
+    etaTasks.forEach(task => {
         if (!assigneeGroups[task.assignee]) {
             assigneeGroups[task.assignee] = [];
         }
@@ -937,56 +951,50 @@ function buildGanttData(rawData, enhancementTitle, globalMaxDate) {
 
     // Schedule tasks for each assignee
     Object.keys(assigneeGroups).forEach(assignee => {
-        let currentDate = new Date(today);
         const assigneeTasks = assigneeGroups[assignee];
 
-        // Sort by: blocked first (they're waiting), then by ETA, then by time left
+        // Sort by estimated start date, then by ETA, then by time left
         assigneeTasks.sort((a, b) => {
             // Blocked tasks at the end
             if (a.isBlocked && !b.isBlocked) return 1;
             if (!a.isBlocked && b.isBlocked) return -1;
+            // Then by estimated start date (earliest first)
+            if (a.estimatedStart && b.estimatedStart) return a.estimatedStart - b.estimatedStart;
+            if (a.estimatedStart) return -1;
+            if (b.estimatedStart) return 1;
             // Then by ETA (earliest first)
             if (a.eta && b.eta) return a.eta - b.eta;
             if (a.eta) return -1;
             if (b.eta) return 1;
-            // Then by time left (smallest first - finish quick wins first)
+            // Then by time left (smallest first)
             return a.timeLeft - b.timeLeft;
         });
 
         assigneeTasks.forEach(task => {
-            // Calculate start date based on dependencies
-            let startDate = new Date(currentDate);
-
-            // Check if dependent on other tasks
-            task.dependencies.forEach(depId => {
-                const depTask = taskMap[depId];
-                if (depTask && depTask.endDate) {
-                    const depEnd = new Date(depTask.endDate);
-                    if (depEnd > startDate) {
-                        startDate = new Date(depEnd);
-                    }
-                }
-            });
-
-            // Calculate end date based on time left (8 hours per day)
-            const daysNeeded = Math.ceil(task.timeLeft / 8);
-            const endDate = new Date(startDate);
-            endDate.setDate(endDate.getDate() + daysNeeded);
-
-            task.startDate = startDate;
-            task.endDate = endDate;
-
-            // Move current date forward for next task
-            currentDate = new Date(endDate);
+            if (task.estimatedStart && task.estimatedEnd) {
+                task.startDate = new Date(task.estimatedStart);
+                task.endDate = new Date(task.estimatedEnd);
+            } else if (task.estimatedStart) {
+                task.startDate = new Date(task.estimatedStart);
+                const daysNeeded = Math.max(1, Math.ceil(task.timeLeft / 8));
+                task.endDate = new Date(task.startDate);
+                task.endDate.setDate(task.endDate.getDate() + daysNeeded);
+            } else if (task.estimatedEnd) {
+                task.endDate = new Date(task.estimatedEnd);
+                const daysNeeded = Math.max(1, Math.ceil(task.timeLeft / 8));
+                task.startDate = new Date(task.endDate);
+                task.startDate.setDate(task.startDate.getDate() - daysNeeded);
+            }
         });
     });
 
     return {
         title: enhancementTitle,
-        tasks: ganttTasks,
+        tasks: etaTasks,
+        noEtaTasks: noEtaTasks,
         assignees: Object.keys(assigneeGroups).sort(),
         minDate: today,
-        maxDate: calculateMaxDate(ganttTasks)
+        maxDate: calculateMaxDate(etaTasks)
     };
 }
 
@@ -1058,12 +1066,16 @@ function closeGanttModal() {
 function renderGanttChart(container, ganttData) {
     container.innerHTML = '';
 
-    if (ganttData.tasks.length === 0) {
+    const { tasks, noEtaTasks = [], assignees, minDate, maxDate } = ganttData;
+
+    if (tasks.length === 0 && noEtaTasks.length === 0) {
         container.innerHTML = '<p style="text-align: center; color: #7f8c8d; padding: 40px;">No active tasks with time remaining.</p>';
         return;
     }
 
-    const { tasks, assignees, minDate, maxDate } = ganttData;
+    if (tasks.length === 0) {
+        // Skip calendar rendering if no ETA tasks, jump to No ETA section below
+    } else {
 
     // Calculate date range
     const dayCount = Math.ceil((maxDate - minDate) / (1000 * 60 * 60 * 24)) + 1;
@@ -1138,25 +1150,34 @@ function renderGanttChart(container, ganttData) {
             // Create a bar slot (one row of the stacked bars)
             const barSlot = document.createElement('div');
             barSlot.className = 'gantt-bar-slot';
-            barSlot.style.height = '28px';
 
             const bar = document.createElement('div');
             bar.className = 'gantt-bar';
             bar.style.left = `${startOffset * dayWidth}px`;
             bar.style.width = `${Math.max(duration, 1) * dayWidth - 4}px`;
-            bar.style.backgroundColor = colors[renderedTaskCount % colors.length];
 
-            if (task.isBlocked) {
+            // Status-based coloring
+            const status = task.status.toLowerCase();
+            if (status.includes('blocked')) {
+                bar.style.backgroundColor = '#ffcdd2'; // Light red for blocked
                 bar.classList.add('blocked');
+            } else if (status.includes('peer review') || status === 'needs peer review') {
+                bar.style.backgroundColor = '#fff9c4'; // Light yellow for peer review
+                bar.classList.add('peer-review');
+            } else if (status.includes('in progress') || status === 'in progress') {
+                bar.style.backgroundColor = '#bbdefb'; // Light blue for in progress
+                bar.classList.add('in-progress');
+            } else {
+                // Light grey for other statuses
+                bar.style.backgroundColor = '#e0e0e0';
             }
 
             // Tooltip content
             bar.title = `${task.title}\n` +
                 `Time Left: ${task.timeLeft.toFixed(1)} hrs\n` +
-                `Start: ${formatDateShort(task.startDate)}\n` +
-                `End: ${formatDateShort(task.endDate)}` +
-                (task.eta ? `\nETA: ${formatDateShort(task.eta)}` : '') +
-                (task.dependencies.length ? `\nDependencies: ${task.dependencies.join(', ')}` : '');
+                `Estimated start date: ${formatDateShort(task.startDate)}\n` +
+                `Estimated completion date: ${formatDateShort(task.endDate)}` +
+                (task.dependencies.length ? `\nPrerequisites: ${task.dependencies.join(', ')}` : '');
 
             // Task label
             const taskLabel = document.createElement('span');
@@ -1191,12 +1212,20 @@ function renderGanttChart(container, ganttData) {
     legend.className = 'gantt-legend';
     legend.innerHTML = `
         <div class="legend-item">
-            <span class="legend-color" style="background: ${colors[0]};"></span>
-            <span>Task Bar (click to open)</span>
+            <span class="legend-color" style="background: #bbdefb;"></span>
+            <span>In Progress</span>
         </div>
         <div class="legend-item">
-            <span class="legend-color blocked"></span>
-            <span>Blocked Task</span>
+            <span class="legend-color" style="background: #ffcdd2;"></span>
+            <span>Blocked</span>
+        </div>
+        <div class="legend-item">
+            <span class="legend-color" style="background: #fff9c4;"></span>
+            <span>Needs Peer Review</span>
+        </div>
+        <div class="legend-item">
+            <span class="legend-color" style="background: #e0e0e0;"></span>
+            <span>Other Status</span>
         </div>
         <div class="legend-item">
             <span class="legend-color weekend" style="background: #f0f0f0;"></span>
@@ -1204,6 +1233,66 @@ function renderGanttChart(container, ganttData) {
         </div>
     `;
     container.appendChild(legend);
+
+    } // end if (tasks.length > 0)
+
+    // Render "No ETA tasks" section
+    if (noEtaTasks.length > 0) {
+        const section = document.createElement('div');
+        section.className = 'no-eta-section';
+
+        const heading = document.createElement('div');
+        heading.className = 'no-eta-heading';
+        heading.textContent = `No ETA Tasks (${noEtaTasks.length})`;
+        section.appendChild(heading);
+
+        const table = document.createElement('table');
+        table.className = 'no-eta-table';
+        table.innerHTML = `<thead><tr>
+            <th>Task</th><th>Assignee</th><th>Time Left</th><th>Status</th>
+        </tr></thead>`;
+
+        const tbody = document.createElement('tbody');
+        noEtaTasks.forEach(task => {
+            const tr = document.createElement('tr');
+            const statusClass = task.isBlocked ? 'blocked' :
+                task.status.includes('peer review') ? 'peer-review' :
+                task.status.includes('in progress') ? 'in-progress' : '';
+
+            const titleCell = document.createElement('td');
+            if (task.link) {
+                const a = document.createElement('a');
+                a.href = task.link;
+                a.target = '_blank';
+                a.textContent = task.title;
+                titleCell.appendChild(a);
+            } else {
+                titleCell.textContent = task.title;
+            }
+
+            const assigneeCell = document.createElement('td');
+            assigneeCell.textContent = task.assignee;
+
+            const timeCell = document.createElement('td');
+            timeCell.textContent = `${task.timeLeft.toFixed(1)} hrs`;
+
+            const statusCell = document.createElement('td');
+            const statusBadge = document.createElement('span');
+            statusBadge.className = `no-eta-status ${statusClass}`;
+            statusBadge.textContent = task.status;
+            statusCell.appendChild(statusBadge);
+
+            tr.appendChild(titleCell);
+            tr.appendChild(assigneeCell);
+            tr.appendChild(timeCell);
+            tr.appendChild(statusCell);
+            tbody.appendChild(tr);
+        });
+
+        table.appendChild(tbody);
+        section.appendChild(table);
+        container.appendChild(section);
+    }
 }
 
 /**

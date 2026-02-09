@@ -158,6 +158,21 @@ async function runUpdateLogic(token, ticketIdsStr) {
         console.log("Migrating CSV to include Task Identifier...");
         trackingData.forEach(row => row['Task Identifier'] = '');
     }
+    // Migration: If no "Estimated Start Date" field, add it
+    if (trackingData.length > 0 && !('Estimated Start Date' in trackingData[0])) {
+        console.log("Migrating CSV to include Estimated Start Date...");
+        trackingData.forEach(row => row['Estimated Start Date'] = '');
+    }
+    // Migration: If no "Estimated End Date" field, add it
+    if (trackingData.length > 0 && !('Estimated End Date' in trackingData[0])) {
+        console.log("Migrating CSV to include Estimated End Date...");
+        trackingData.forEach(row => row['Estimated End Date'] = '');
+    }
+    // Migration: If no "Parent Folder" field, add it
+    if (trackingData.length > 0 && !('Parent Folder' in trackingData[0])) {
+        console.log("Migrating CSV to include Parent Folder...");
+        trackingData.forEach(row => row['Parent Folder'] = '');
+    }
 
     // Index for fast lookup
     const dataIndex = {};
@@ -248,6 +263,9 @@ async function runUpdateLogic(token, ticketIdsStr) {
             let timeLeft = task["Document.TimeLeftMn"] || "0";
             const eta = task["Document.CurrentEstimatedCompletionDate"] || "";
             const cortexLink = task["Document.CortexShareLinkRaw"] || "";
+            const estimatedStartDate = task["Document.CurrentEstimatedStartDate"] || "";
+            const estimatedEndDate = task["Document.CurrentEstimatedEndDate"] || "";
+            const parentFolder = task["ParentFolderIdentifier"] || "";
 
             // Extract dependencies - can be array of objects or string
             let dependencies = "";
@@ -281,7 +299,10 @@ async function runUpdateLogic(token, ticketIdsStr) {
                 'Cortex Link': cortexLink,
                 'Status': status,
                 'Importance': enhancementImportance,
-                'Dependencies': dependencies
+                'Dependencies': dependencies,
+                'Estimated Start Date': estimatedStartDate,
+                'Estimated End Date': estimatedEndDate,
+                'Parent Folder': parentFolder
             };
 
             // Backfill History Logic
@@ -329,7 +350,9 @@ function searchOLTask(query, token) {
             "CoreField.DocSubType", "CoreField.Status", "AssignedTo",
             "Document.TimeSpentMn", "Document.TimeLeftMn", "dev.Main-dev-team",
             "Document.CurrentEstimatedCompletionDate", "Document.CortexShareLinkRaw",
-            "product.Importance-for-next-release", "Document.Dependencies"
+            "product.Importance-for-next-release", "Document.Dependencies",
+            "Document.CurrentEstimatedStartDate", "Document.CurrentEstimatedEndDate",
+            "ParentFolderIdentifier"
         ].join(",");
 
         const params = new URLSearchParams({
