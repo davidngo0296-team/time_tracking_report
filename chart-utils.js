@@ -880,6 +880,8 @@ function buildGanttData(rawData, enhancementTitle, globalMaxDate) {
     tasks.forEach(row => {
         const taskId = row['Task Identifier'] || row['Task title'];
 
+        const timeSpentMinutes = parseFloat(row['Time spent']) || 0;
+        const timeSpentHours = timeSpentMinutes / 60;
         const timeLeftMinutes = parseFloat(row['Time left']) || 0;
         const timeLeftHours = timeLeftMinutes / 60;
         const etaRaw = row['ETA'] || '';
@@ -901,6 +903,7 @@ function buildGanttData(rawData, enhancementTitle, globalMaxDate) {
             id: taskId,
             title: row['Task title'],
             assignee: row['Assignee'] || '(unassigned)',
+            timeSpent: timeSpentHours,
             timeLeft: timeLeftHours,
             eta: etaRaw ? parseETADate(etaRaw) : null,
             estimatedStart: estimatedStartRaw ? parseETADate(estimatedStartRaw) : null,
@@ -1168,6 +1171,7 @@ function renderGanttChart(container, ganttData) {
 
             // Tooltip content
             bar.title = `${task.title}\n` +
+                `Time Spent: ${task.timeSpent.toFixed(1)} hrs\n` +
                 `Time Left: ${task.timeLeft.toFixed(1)} hrs\n` +
                 `Estimated start date: ${formatDateShort(task.startDate)}\n` +
                 `Estimated completion date: ${formatDateShort(task.endDate)}` +
