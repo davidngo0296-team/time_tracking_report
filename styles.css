@@ -7,6 +7,35 @@ body {
     color: #333;
 }
 
+/* Gantt Chart Container */
+#gantt-chart-container {
+    width: 100%;
+    overflow-x: auto;
+    overflow-y: auto;
+    max-height: 70vh;
+    scrollbar-width: thin;
+    scrollbar-color: #9b59b6 #f0f0f0;
+}
+
+#gantt-chart-container::-webkit-scrollbar {
+    height: 12px;
+    width: 12px;
+}
+
+#gantt-chart-container::-webkit-scrollbar-track {
+    background: #f0f0f0;
+    border-radius: 6px;
+}
+
+#gantt-chart-container::-webkit-scrollbar-thumb {
+    background: #9b59b6;
+    border-radius: 6px;
+}
+
+#gantt-chart-container::-webkit-scrollbar-thumb:hover {
+    background: #8e44ad;
+}
+
 .container {
     max-width: 98%;
     margin: 0 auto;
@@ -482,4 +511,255 @@ h2 {
 
 .remove-ticket:hover {
     background: #fdeaea;
+}
+
+/* ======================================== */
+/* GANTT CHART STYLES */
+/* ======================================== */
+
+/* Gantt Chart Button */
+.gantt-btn {
+    background: linear-gradient(135deg, #9b59b6, #8e44ad);
+    color: white;
+    border: none;
+    padding: 6px 14px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9em;
+    font-weight: 500;
+    margin-left: 15px;
+    transition: all 0.2s;
+}
+
+.gantt-btn:hover {
+    background: linear-gradient(135deg, #8e44ad, #7d3c98);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(155, 89, 182, 0.4);
+}
+
+/* Gantt Modal */
+#gantt-modal .modal-content {
+    max-width: 95%;
+    width: 1400px;
+    border-left: 5px solid #9b59b6;
+    max-height: 90vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+#gantt-modal .modal-header {
+    color: #8e44ad;
+    flex-shrink: 0;
+}
+
+#gantt-modal .modal-body {
+    flex: 1;
+    overflow: auto;
+    margin-bottom: 0;
+    padding-bottom: 15px;
+}
+
+/* Gantt Header */
+.gantt-header {
+    display: flex;
+    background: #f8f9fa;
+    border-bottom: 2px solid #ddd;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.gantt-header .gantt-assignee-label {
+    font-weight: 600;
+    color: #555;
+}
+
+.gantt-dates {
+    display: flex;
+    flex-shrink: 0;
+}
+
+.gantt-date-label {
+    text-align: center;
+    padding: 8px 4px;
+    font-size: 0.75em;
+    color: #666;
+    border-left: 1px solid #e0e0e0;
+    box-sizing: border-box;
+}
+
+.gantt-date-label.weekend {
+    background: #f0f0f0;
+    color: #999;
+}
+
+/* Gantt Row */
+.gantt-row {
+    display: flex;
+    border-bottom: 1px solid #e0e0e0;
+    min-height: 40px;
+    position: relative;
+}
+
+.gantt-row.alt {
+    background: #fafafa;
+}
+
+.gantt-assignee-label {
+    width: 150px;
+    min-width: 150px;
+    padding: 10px 12px;
+    font-size: 0.9em;
+    color: #333;
+    border-right: 1px solid #ddd;
+    display: flex;
+    align-items: flex-start;
+    background: #fff;
+    position: sticky;
+    left: 0;
+    z-index: 5;
+}
+
+.gantt-row.alt .gantt-assignee-label {
+    background: #fafafa;
+}
+
+/* Gantt Bars Container */
+.gantt-bars {
+    position: relative;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Bars Layer - contains the bar slots */
+.gantt-bars-layer {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    z-index: 2;
+}
+
+/* Bar Slot - one slot per task bar */
+.gantt-bar-slot {
+    position: relative;
+    width: 100%;
+}
+
+.gantt-grid-line {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    border-left: 1px solid #f0f0f0;
+    box-sizing: border-box;
+    z-index: 1;
+}
+
+.gantt-grid-line.weekend {
+    background: rgba(0, 0, 0, 0.03);
+}
+
+/* Gantt Task Bar */
+.gantt-bar {
+    position: absolute;
+    top: 2px;
+    height: 24px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    padding: 0 8px;
+    box-sizing: border-box;
+    transition: all 0.2s;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+    z-index: 2;
+}
+
+.gantt-bar:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.25);
+    z-index: 3;
+}
+
+/* Blocked task bar - keeps color with diagonal stripe overlay */
+.gantt-bar.blocked {
+    position: relative;
+    opacity: 0.85;
+}
+
+.gantt-bar.blocked::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: repeating-linear-gradient(45deg,
+            transparent,
+            transparent 4px,
+            rgba(0, 0, 0, 0.25) 4px,
+            rgba(0, 0, 0, 0.25) 8px);
+    border-radius: 4px;
+    pointer-events: none;
+}
+
+.gantt-bar-label {
+    color: white;
+    font-size: 0.75em;
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+/* Gantt Legend */
+.gantt-legend {
+    display: flex;
+    gap: 20px;
+    padding: 15px;
+    background: #f8f9fa;
+    border-top: 1px solid #e0e0e0;
+    margin-top: 15px;
+    border-radius: 4px;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.85em;
+    color: #555;
+}
+
+.legend-color {
+    width: 20px;
+    height: 14px;
+    border-radius: 3px;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.legend-color.blocked {
+    background: #e74c3c;
+    position: relative;
+}
+
+.legend-color.blocked::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: repeating-linear-gradient(45deg,
+            transparent,
+            transparent 2px,
+            rgba(0, 0, 0, 0.3) 2px,
+            rgba(0, 0, 0, 0.3) 4px);
+    border-radius: 3px;
+}
+
+.legend-color.weekend {
+    background: #f0f0f0;
+    border: 1px solid #ddd;
 }

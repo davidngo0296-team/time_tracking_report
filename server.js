@@ -148,6 +148,16 @@ async function runUpdateLogic(token, ticketIdsStr) {
         console.log("Migrating CSV to include Importance...");
         trackingData.forEach(row => row['Importance'] = '');
     }
+    // Migration: If no "Dependencies" field, add it
+    if (trackingData.length > 0 && !('Dependencies' in trackingData[0])) {
+        console.log("Migrating CSV to include Dependencies...");
+        trackingData.forEach(row => row['Dependencies'] = '');
+    }
+    // Migration: If no "Task Identifier" field, add it
+    if (trackingData.length > 0 && !('Task Identifier' in trackingData[0])) {
+        console.log("Migrating CSV to include Task Identifier...");
+        trackingData.forEach(row => row['Task Identifier'] = '');
+    }
 
     // Index for fast lookup
     const dataIndex = {};
@@ -230,6 +240,7 @@ async function runUpdateLogic(token, ticketIdsStr) {
             if (!ALLOWED_TYPES.includes(type)) continue;
 
             const taskTitle = task["CoreField.Title"];
+            const taskIdentifier = task["CoreField.Identifier"] || "";
             const assignee = task.AssignedTo || '(unassigned)';
             const status = (task["CoreField.Status"] || '').trim();
 
@@ -237,6 +248,16 @@ async function runUpdateLogic(token, ticketIdsStr) {
             let timeLeft = task["Document.TimeLeftMn"] || "0";
             const eta = task["Document.CurrentEstimatedCompletionDate"] || "";
             const cortexLink = task["Document.CortexShareLinkRaw"] || "";
+
+            // Extract dependencies - can be array of objects or string
+            let dependencies = "";
+            const depField = task["Document.Dependencies"];
+            if (Array.isArray(depField) && depField.length > 0) {
+                // Format: [{Identifier: "L-XXXX", Title: "...", RecordId: "..."}, ...]
+                dependencies = depField.map(d => d.Identifier || d.RecordId || d).filter(d => d).join(";");
+            } else if (typeof depField === 'string') {
+                dependencies = depField;
+            }
             // Use team from enhancement (parent level) - child tasks don't have this field
 
             if (IGNORED_STATUSES.includes(status)) {
@@ -249,6 +270,7 @@ async function runUpdateLogic(token, ticketIdsStr) {
                 'Capture date': captureDate,
                 'Enhancement title': enhancementTitle,
                 'Task title': taskTitle,
+                'Task Identifier': taskIdentifier,
                 'Type': type,
                 'Assignee': assignee,
                 'Time spent': timeSpent,
@@ -258,7 +280,8 @@ async function runUpdateLogic(token, ticketIdsStr) {
                 'ETA': eta,
                 'Cortex Link': cortexLink,
                 'Status': status,
-                'Importance': enhancementImportance
+                'Importance': enhancementImportance,
+                'Dependencies': dependencies
             };
 
             // Backfill History Logic
@@ -306,7 +329,7 @@ function searchOLTask(query, token) {
             "CoreField.DocSubType", "CoreField.Status", "AssignedTo",
             "Document.TimeSpentMn", "Document.TimeLeftMn", "dev.Main-dev-team",
             "Document.CurrentEstimatedCompletionDate", "Document.CortexShareLinkRaw",
-            "product.Importance-for-next-release"
+            "product.Importance-for-next-release", "Document.Dependencies"
         ].join(",");
 
         const params = new URLSearchParams({

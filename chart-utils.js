@@ -498,7 +498,7 @@ function createChartSection(container, title, index, groupedData, rawData, globa
     }
     section.appendChild(header);
 
-    // Task type filter
+    // Task type filter and Gantt button
     const filterDiv = document.createElement('div');
     filterDiv.className = 'enhancement-filter';
     filterDiv.innerHTML = `
@@ -508,6 +508,9 @@ function createChartSection(container, title, index, groupedData, rawData, globa
             <option value="qa">QA Tasks</option>
             <option value="non-qa">Non-QA Tasks</option>
         </select>
+        <button class="gantt-btn" onclick="openGanttModal(${index})" title="View Gantt Chart">
+            📊 Gantt Chart
+        </button>
     `;
     section.appendChild(filterDiv);
 
@@ -859,3 +862,366 @@ function createNoETASection(rawData, globalMaxDate) {
         container.appendChild(group);
     });
 }
+
+// ===========================================
+// GANTT CHART FUNCTIONALITY
+// ===========================================
+
+// Store for Gantt data per enhancement
+const ganttDataStore = {};
+let ganttChartInstance = null;
+
+/**
+ * Build Gantt chart data for an enhancement
+ * @param {Array} rawData - All CSV data
+ * @param {string} enhancementTitle - The enhancement to build Gantt for
+ * @param {string} globalMaxDate - Latest date in data
+ * @returns {Object} Gantt data structure
+ */
+function buildGanttData(rawData, enhancementTitle, globalMaxDate) {
+    // Filter tasks for this enhancement on the latest date
+    const tasks = rawData.filter(row =>
+        row['Enhancement title'] === enhancementTitle &&
+        row['Capture date'] === globalMaxDate
+    );
+
+    // Build task map by identifier for dependency resolution
+    const taskMap = {};
+    const ganttTasks = [];
+
+    // First pass: collect all tasks
+    tasks.forEach(row => {
+        const taskId = row['Task Identifier'] || row['Task title'];
+        const timeLeftMinutes = parseFloat(row['Time left']) || 0;
+        const timeLeftHours = timeLeftMinutes / 60;
+        const etaRaw = row['ETA'] || '';
+        const dependencies = (row['Dependencies'] || '').split(';').filter(d => d.trim());
+        const status = (row['Status'] || '').toLowerCase();
+        const type = row['Type'] || '';
+
+        // Skip tasks with no time left or closed/obsolete
+        const skipStatuses = ['obsolete', 'duplicate', 'closed', 'implemented on dev'];
+        if (timeLeftHours <= 0 || skipStatuses.includes(status)) {
+            return;
+        }
+
+        const task = {
+            id: taskId,
+            title: row['Task title'],
+            assignee: row['Assignee'] || '(unassigned)',
+            timeLeft: timeLeftHours,
+            eta: etaRaw ? parseETADate(etaRaw) : null,
+            dependencies: dependencies,
+            status: status,
+            type: type,
+            link: row['Cortex Link'] || '',
+            isBlocked: status.includes('blocked')
+        };
+
+        taskMap[taskId] = task;
+        ganttTasks.push(task);
+    });
+
+    // Calculate scheduling based on dependencies and time left
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    // Group tasks by assignee
+    const assigneeGroups = {};
+    ganttTasks.forEach(task => {
+        if (!assigneeGroups[task.assignee]) {
+            assigneeGroups[task.assignee] = [];
+        }
+        assigneeGroups[task.assignee].push(task);
+    });
+
+    // Schedule tasks for each assignee
+    Object.keys(assigneeGroups).forEach(assignee => {
+        let currentDate = new Date(today);
+        const assigneeTasks = assigneeGroups[assignee];
+
+        // Sort by: blocked first (they're waiting), then by ETA, then by time left
+        assigneeTasks.sort((a, b) => {
+            // Blocked tasks at the end
+            if (a.isBlocked && !b.isBlocked) return 1;
+            if (!a.isBlocked && b.isBlocked) return -1;
+            // Then by ETA (earliest first)
+            if (a.eta && b.eta) return a.eta - b.eta;
+            if (a.eta) return -1;
+            if (b.eta) return 1;
+            // Then by time left (smallest first - finish quick wins first)
+            return a.timeLeft - b.timeLeft;
+        });
+
+        assigneeTasks.forEach(task => {
+            // Calculate start date based on dependencies
+            let startDate = new Date(currentDate);
+
+            // Check if dependent on other tasks
+            task.dependencies.forEach(depId => {
+                const depTask = taskMap[depId];
+                if (depTask && depTask.endDate) {
+                    const depEnd = new Date(depTask.endDate);
+                    if (depEnd > startDate) {
+                        startDate = new Date(depEnd);
+                    }
+                }
+            });
+
+            // Calculate end date based on time left (8 hours per day)
+            const daysNeeded = Math.ceil(task.timeLeft / 8);
+            const endDate = new Date(startDate);
+            endDate.setDate(endDate.getDate() + daysNeeded);
+
+            task.startDate = startDate;
+            task.endDate = endDate;
+
+            // Move current date forward for next task
+            currentDate = new Date(endDate);
+        });
+    });
+
+    return {
+        title: enhancementTitle,
+        tasks: ganttTasks,
+        assignees: Object.keys(assigneeGroups).sort(),
+        minDate: today,
+        maxDate: calculateMaxDate(ganttTasks)
+    };
+}
+
+/**
+ * Parse ETA string to Date object
+ */
+function parseETADate(etaString) {
+    if (!etaString) return null;
+    // Handle various date formats
+    const cleaned = etaString.trim();
+    const date = new Date(cleaned);
+    return isNaN(date.getTime()) ? null : date;
+}
+
+/**
+ * Calculate the maximum end date from all tasks
+ */
+function calculateMaxDate(tasks) {
+    let max = new Date();
+    tasks.forEach(task => {
+        if (task.endDate && task.endDate > max) {
+            max = new Date(task.endDate);
+        }
+    });
+    // Add some padding
+    max.setDate(max.getDate() + 3);
+    return max;
+}
+
+/**
+ * Open Gantt chart modal for an enhancement
+ */
+function openGanttModal(index) {
+    const info = window.enhancementInfo[index];
+    if (!info) return;
+
+    const modal = document.getElementById('gantt-modal');
+    const titleEl = document.getElementById('gantt-modal-title');
+    const container = document.getElementById('gantt-chart-container');
+
+    titleEl.textContent = `Gantt Chart: ${info.title}`;
+    modal.classList.add('show');
+
+    // Get raw data from global storage
+    const rawData = window.rawParsedData || [];
+    const globalMaxDate = window.globalMaxDate || '';
+
+    // Build Gantt data
+    const ganttData = buildGanttData(rawData, info.title, globalMaxDate);
+    ganttDataStore[index] = ganttData;
+
+    // Render Gantt chart
+    renderGanttChart(container, ganttData);
+}
+
+/**
+ * Close Gantt chart modal
+ */
+function closeGanttModal() {
+    document.getElementById('gantt-modal').classList.remove('show');
+    if (ganttChartInstance) {
+        ganttChartInstance = null;
+    }
+}
+
+/**
+ * Render the Gantt chart using HTML/CSS (no external library needed)
+ */
+function renderGanttChart(container, ganttData) {
+    container.innerHTML = '';
+
+    if (ganttData.tasks.length === 0) {
+        container.innerHTML = '<p style="text-align: center; color: #7f8c8d; padding: 40px;">No active tasks with time remaining.</p>';
+        return;
+    }
+
+    const { tasks, assignees, minDate, maxDate } = ganttData;
+
+    // Calculate date range
+    const dayCount = Math.ceil((maxDate - minDate) / (1000 * 60 * 60 * 24)) + 1;
+    const dayWidth = Math.max(80, Math.min(120, 1200 / dayCount)); // Wider columns for better readability
+
+    // Create header with dates
+    const headerRow = document.createElement('div');
+    headerRow.className = 'gantt-header';
+    headerRow.innerHTML = '<div class="gantt-assignee-label">Assignee</div>';
+
+    const datesContainer = document.createElement('div');
+    datesContainer.className = 'gantt-dates';
+    datesContainer.style.width = `${dayCount * dayWidth}px`;
+
+    for (let i = 0; i < dayCount; i++) {
+        const date = new Date(minDate);
+        date.setDate(date.getDate() + i);
+        const dateLabel = document.createElement('div');
+        dateLabel.className = 'gantt-date-label';
+        dateLabel.style.width = `${dayWidth}px`;
+        const isWeekend = date.getDay() === 0 || date.getDay() === 6;
+        if (isWeekend) dateLabel.classList.add('weekend');
+        dateLabel.textContent = `${date.getMonth() + 1}/${date.getDate()}`;
+        datesContainer.appendChild(dateLabel);
+    }
+    headerRow.appendChild(datesContainer);
+    container.appendChild(headerRow);
+
+    // Create rows for each assignee
+    assignees.forEach((assignee, rowIndex) => {
+        const row = document.createElement('div');
+        row.className = 'gantt-row';
+        if (rowIndex % 2 === 1) row.classList.add('alt');
+
+        const label = document.createElement('div');
+        label.className = 'gantt-assignee-label';
+        label.textContent = assignee;
+        row.appendChild(label);
+
+        const barsContainer = document.createElement('div');
+        barsContainer.className = 'gantt-bars';
+        barsContainer.style.width = `${dayCount * dayWidth}px`;
+
+        // Add grid lines
+        for (let i = 0; i < dayCount; i++) {
+            const date = new Date(minDate);
+            date.setDate(date.getDate() + i);
+            const gridLine = document.createElement('div');
+            gridLine.className = 'gantt-grid-line';
+            gridLine.style.left = `${i * dayWidth}px`;
+            gridLine.style.width = `${dayWidth}px`;
+            const isWeekend = date.getDay() === 0 || date.getDay() === 6;
+            if (isWeekend) gridLine.classList.add('weekend');
+            barsContainer.appendChild(gridLine);
+        }
+
+        // Add task bars for this assignee
+        const assigneeTasks = tasks.filter(t => t.assignee === assignee);
+        let renderedTaskCount = 0; // Track actual rendered tasks
+
+        // Create a bars layer for the absolute positioned task bars
+        const barsLayer = document.createElement('div');
+        barsLayer.className = 'gantt-bars-layer';
+        barsLayer.style.width = `${dayCount * dayWidth}px`;
+
+        assigneeTasks.forEach((task) => {
+            if (!task.startDate || !task.endDate) return;
+
+            const startOffset = Math.floor((task.startDate - minDate) / (1000 * 60 * 60 * 24));
+            const duration = Math.ceil((task.endDate - task.startDate) / (1000 * 60 * 60 * 24));
+
+            // Create a bar slot (one row of the stacked bars)
+            const barSlot = document.createElement('div');
+            barSlot.className = 'gantt-bar-slot';
+            barSlot.style.height = '28px';
+
+            const bar = document.createElement('div');
+            bar.className = 'gantt-bar';
+            bar.style.left = `${startOffset * dayWidth}px`;
+            bar.style.width = `${Math.max(duration, 1) * dayWidth - 4}px`;
+            bar.style.backgroundColor = colors[renderedTaskCount % colors.length];
+
+            if (task.isBlocked) {
+                bar.classList.add('blocked');
+            }
+
+            // Tooltip content
+            bar.title = `${task.title}\n` +
+                `Time Left: ${task.timeLeft.toFixed(1)} hrs\n` +
+                `Start: ${formatDateShort(task.startDate)}\n` +
+                `End: ${formatDateShort(task.endDate)}` +
+                (task.eta ? `\nETA: ${formatDateShort(task.eta)}` : '') +
+                (task.dependencies.length ? `\nDependencies: ${task.dependencies.join(', ')}` : '');
+
+            // Task label
+            const taskLabel = document.createElement('span');
+            taskLabel.className = 'gantt-bar-label';
+            taskLabel.textContent = truncateText(task.title, 35);
+            bar.appendChild(taskLabel);
+
+            // Click to open task link
+            if (task.link) {
+                bar.style.cursor = 'pointer';
+                bar.onclick = () => window.open(task.link, '_blank');
+            }
+
+            barSlot.appendChild(bar);
+            barsLayer.appendChild(barSlot);
+            renderedTaskCount++; // Increment only when bar is actually rendered
+        });
+
+        // Add grid lines to barsContainer
+        barsContainer.appendChild(barsLayer);
+
+        // Adjust row height based on number of actually rendered tasks
+        const rowHeight = Math.max(40, renderedTaskCount * 28 + 8);
+        barsContainer.style.minHeight = `${rowHeight}px`;
+
+        row.appendChild(barsContainer);
+        container.appendChild(row);
+    });
+
+    // Add legend
+    const legend = document.createElement('div');
+    legend.className = 'gantt-legend';
+    legend.innerHTML = `
+        <div class="legend-item">
+            <span class="legend-color" style="background: ${colors[0]};"></span>
+            <span>Task Bar (click to open)</span>
+        </div>
+        <div class="legend-item">
+            <span class="legend-color blocked"></span>
+            <span>Blocked Task</span>
+        </div>
+        <div class="legend-item">
+            <span class="legend-color weekend" style="background: #f0f0f0;"></span>
+            <span>Weekend</span>
+        </div>
+    `;
+    container.appendChild(legend);
+}
+
+/**
+ * Format date for display
+ */
+function formatDateShort(date) {
+    if (!date) return '';
+    return `${date.getMonth() + 1}/${date.getDate()}/${date.getFullYear()}`;
+}
+
+/**
+ * Truncate text with ellipsis
+ */
+function truncateText(text, maxLength) {
+    if (text.length <= maxLength) return text;
+    return text.substring(0, maxLength - 3) + '...';
+}
+
+// Expose Gantt functions to global scope for onclick handlers
+window.openGanttModal = openGanttModal;
+window.closeGanttModal = closeGanttModal;

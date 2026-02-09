@@ -188,6 +188,10 @@ function initializeApp() {
             // Find global latest date
             const globalMaxDate = parsedData.reduce((max, row) => (row['Capture date'] > max ? row['Capture date'] : max), '');
 
+            // Store globally for Gantt chart access
+            window.rawParsedData = parsedData;
+            window.globalMaxDate = globalMaxDate;
+
             // Get importance for each enhancement
             const getEnhancementImportance = (title) => {
                 const row = parsedData.find(r =>
