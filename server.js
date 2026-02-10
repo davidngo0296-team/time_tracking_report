@@ -30,6 +30,8 @@ const server = http.createServer((req, res) => {
     const staticFiles = {
         '/styles.css': { file: 'styles.css', type: 'text/css' },
         '/chart-utils.js': { file: 'chart-utils.js', type: 'application/javascript' },
+        '/chart-render.js': { file: 'chart-render.js', type: 'application/javascript' },
+        '/gantt.js': { file: 'gantt.js', type: 'application/javascript' },
         '/app.js': { file: 'app.js', type: 'application/javascript' }
     };
 
@@ -103,9 +105,9 @@ const server = http.createServer((req, res) => {
 
 // --- Logic ---
 
-const ALLOWED_TYPES = ["Development", "Configuration Request", "Defect - QA Vietnam", "Question", "QA"];
-const CONTAINER_TYPES = ["Development", "QA"];
-const IGNORED_STATUSES = ["Obsolete", "Duplicate", "Closed", "Needs Peer Review", "Implemented on Dev", "In Revision"];
+const ALLOWED_TYPES = ["Development", "Configuration Request", "Defect - QA Vietnam", "Question", "QA", "Infrastructure Deployment", "Access Change Request"];
+const CONTAINER_TYPES = ["Development", "QA", "Infrastructure Deployment", "Access Change Request"];
+const IGNORED_STATUSES = ["Obsolete", "Duplicate", "Closed", "Needs Peer Review", "Implemented on Dev", "In Revision", "Access granted", "Completed"];
 
 async function runUpdateLogic(token, ticketIdsStr) {
     const ticketIds = ticketIdsStr.split(',').map(s => s.trim()).filter(s => s);
