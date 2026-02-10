@@ -211,7 +211,8 @@ function reloadEnhancement(ticketId, btn) {
                 }
                 throw new Error(result.error);
             }
-            location.reload();
+            // Re-fetch CSV and refresh only this enhancement section
+            return refreshEnhancementSection(ticketId, btn);
         })
         .catch(error => {
             showErrorModal(error.message);
@@ -219,6 +220,70 @@ function reloadEnhancement(ticketId, btn) {
         .finally(() => {
             btn.innerHTML = originalText;
             btn.disabled = false;
+        });
+}
+
+function refreshEnhancementSection(ticketId, btn) {
+    const section = btn.closest('.enhancement-section');
+    if (!section) return;
+
+    // Find the index from the filter select inside this section
+    const filterSelect = section.querySelector('select[id^="filter-"]');
+    const index = filterSelect ? parseInt(filterSelect.id.replace('filter-', '')) : null;
+    if (index === null) return;
+
+    return fetch('Time_tracking_data.csv')
+        .then(response => response.text())
+        .then(csvText => {
+            const parsedData = parseCSV(csvText);
+            const groupedData = processDataForTimeSeries(parsedData);
+
+            // Update global latest date
+            const globalMaxDate = parsedData.reduce((max, row) =>
+                (row['Capture date'] > max ? row['Capture date'] : max), '');
+
+            // Update globals
+            window.rawParsedData = parsedData;
+            window.globalMaxDate = globalMaxDate;
+
+            const info = window.enhancementInfo[index];
+            if (!info) return;
+            const title = info.title;
+
+            // Destroy existing chart instances for this section
+            ['chart-spent-', 'chart-left-', 'chart-left-blocked-'].forEach(prefix => {
+                const canvasId = `${prefix}${index}`;
+                if (chartInstances[canvasId]) {
+                    chartInstances[canvasId].destroy();
+                    delete chartInstances[canvasId];
+                }
+                delete chartStore[canvasId];
+            });
+
+            // Remove old section first to avoid duplicate canvas IDs
+            const parent = section.parentNode;
+            const nextSibling = section.nextSibling;
+            section.remove();
+
+            // Insert temp container at the old section's position
+            const tempContainer = document.createElement('div');
+            if (nextSibling) {
+                parent.insertBefore(tempContainer, nextSibling);
+            } else {
+                parent.appendChild(tempContainer);
+            }
+
+            // Create new section (canvases have unique IDs in DOM now)
+            createChartSection(tempContainer, title, index, groupedData, parsedData, globalMaxDate);
+
+            // Unwrap from temp container
+            const newSection = tempContainer.firstChild;
+            parent.insertBefore(newSection, tempContainer);
+            tempContainer.remove();
+
+            // Also refresh global stats and no-ETA sections
+            createGlobalTimeLeftChart(groupedData, globalMaxDate, parsedData);
+            createNoETASection(parsedData, globalMaxDate);
         });
 }
 
