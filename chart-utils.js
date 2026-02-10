@@ -898,9 +898,10 @@ function buildGanttData(rawData, enhancementTitle, globalMaxDate) {
         const estimatedStartRaw = row['Estimated Start Date'] || '';
         const estimatedEndRaw = row['Estimated End Date'] || '';
 
-        // Skip tasks with no time left or closed/obsolete
+        // Skip closed/obsolete tasks, or tasks with no time left unless awaiting peer review
         const skipStatuses = ['obsolete', 'duplicate', 'closed', 'implemented on dev'];
-        if (timeLeftHours <= 0 || skipStatuses.includes(status)) {
+        const keepStatuses = ['needs peer review'];
+        if (skipStatuses.includes(status) || (timeLeftHours <= 0 && !keepStatuses.includes(status))) {
             return;
         }
 
