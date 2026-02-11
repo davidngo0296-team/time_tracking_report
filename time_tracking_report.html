@@ -103,10 +103,26 @@
         </div>
     </div>
 
+    <!-- Task Tree Modal -->
+    <div id="tree-modal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header" id="tree-modal-title">Task Tree</div>
+            <div class="modal-body">
+                <div id="tree-chart-container">
+                    <!-- Task tree will be rendered here -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="modal-btn" onclick="closeTreeModal()" style="background: #16a085;">Close</button>
+            </div>
+        </div>
+    </div>
+
     <!-- JavaScript Files -->
     <script src="chart-utils.js"></script>
     <script src="chart-render.js"></script>
     <script src="gantt.js"></script>
+    <script src="tree.js"></script>
     <script src="app.js"></script>
 </body>
 

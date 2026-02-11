@@ -32,6 +32,7 @@ const server = http.createServer((req, res) => {
         '/chart-utils.js': { file: 'chart-utils.js', type: 'application/javascript' },
         '/chart-render.js': { file: 'chart-render.js', type: 'application/javascript' },
         '/gantt.js': { file: 'gantt.js', type: 'application/javascript' },
+        '/tree.js': { file: 'tree.js', type: 'application/javascript' },
         '/app.js': { file: 'app.js', type: 'application/javascript' }
     };
 
@@ -107,6 +108,7 @@ const server = http.createServer((req, res) => {
 
 const ALLOWED_TYPES = ["Development", "Configuration Request", "Defect - QA Vietnam", "Question", "QA", "Infrastructure Deployment", "Access Change Request"];
 const CONTAINER_TYPES = ["Development", "QA", "Infrastructure Deployment", "Access Change Request"];
+const NO_RECURSE_TYPES = ["Technical Debt Code"];
 const IGNORED_STATUSES = ["Obsolete", "Duplicate", "Closed", "Needs Peer Review", "Implemented on Dev", "In Revision", "Access granted", "Completed"];
 
 async function runUpdateLogic(token, ticketIdsStr) {
@@ -249,8 +251,38 @@ async function runUpdateLogic(token, ticketIdsStr) {
             allTasks.push(...devDescendants);
         }
 
-        // 4. Process Tasks
+        // 4. Filter out tasks under excluded types (and their descendants)
+        // Note: Parentfolderidentifier query returns ALL descendants, not just direct children,
+        // so directChildren already contains nested tasks like children of "Technical Debt Code" containers.
+        const excludedIds = new Set();
+        for (const task of allTasks) {
+            const type = (task["CoreField.DocSubType"] || '').trim();
+            if (NO_RECURSE_TYPES.includes(type)) {
+                excludedIds.add(task["CoreField.Identifier"]);
+            }
+        }
+        if (excludedIds.size > 0) {
+            // Multi-pass: also exclude descendants of excluded tasks
+            let prevSize = 0;
+            while (excludedIds.size > prevSize) {
+                prevSize = excludedIds.size;
+                for (const task of allTasks) {
+                    const parentFolder = task["ParentFolderIdentifier"] || "";
+                    if (excludedIds.has(parentFolder)) {
+                        excludedIds.add(task["CoreField.Identifier"]);
+                    }
+                }
+            }
+            const beforeCount = allTasks.length;
+            allTasks = allTasks.filter(t => !excludedIds.has(t["CoreField.Identifier"]));
+            if (allTasks.length < beforeCount) {
+                log(`    Excluded ${beforeCount - allTasks.length} task(s) under ${NO_RECURSE_TYPES.join(', ')} containers`);
+            }
+        }
+
+        // 5. Process Tasks — track which identifiers we see from the API
         let addedCount = 0;
+        const seenIdentifiers = new Set();
         for (const task of allTasks) {
             const type = (task["CoreField.DocSubType"] || '').trim();
             if (!ALLOWED_TYPES.includes(type)) continue;
@@ -283,6 +315,7 @@ async function runUpdateLogic(token, ticketIdsStr) {
                 timeLeft = "0";
             }
 
+            seenIdentifiers.add(taskIdentifier);
             const rowKey = `${captureDate}|${enhancementTitle}|${taskTitle}|${taskIdentifier}`;
 
             const newRow = {
@@ -331,6 +364,21 @@ async function runUpdateLogic(token, ticketIdsStr) {
             }
         }
         if (addedCount === 0) log(`  No new tasks added.`);
+
+        // 6. Remove CSV rows for today's date + this enhancement that are no longer in the API response
+        let removedCount = 0;
+        trackingData = trackingData.filter(row => {
+            if (row['Capture date'] === captureDate &&
+                row['Enhancement title'] === enhancementTitle &&
+                row['Task Identifier'] &&
+                !seenIdentifiers.has(row['Task Identifier'])) {
+                log(`    Removed (no longer on Link): ${row['Task title']} (${row['Task Identifier']})`);
+                removedCount++;
+                return false;
+            }
+            return true;
+        });
+        if (removedCount > 0) log(`  Removed ${removedCount} task(s) no longer found on Link.`);
     }
 
     // Save CSV
@@ -357,6 +405,7 @@ async function getAllDescendants(parentId, token, log, depth = 1) {
         const childType = (child["CoreField.DocSubType"] || '').trim();
 
         if (!ALLOWED_TYPES.includes(childType)) continue; // Skip non-allowed types
+        if (NO_RECURSE_TYPES.includes(childType)) continue; // Skip excluded types entirely
 
         all.push(child);
         // Only recurse into container types (Development, QA)

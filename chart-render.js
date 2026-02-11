@@ -336,6 +336,9 @@ function createChartSection(container, title, index, groupedData, rawData, globa
         <button class="gantt-btn" onclick="openGanttModal(${index})" title="View Gantt Chart">
             📊 Gantt Chart
         </button>
+        <button class="tree-btn" onclick="openTreeModal(${index})" title="View Task Tree">
+            🌳 Task Tree
+        </button>
         ${ticketId ? `<button class="reload-btn" onclick="reloadEnhancement('${ticketId}', this)" title="Reload data for this enhancement">
             🔄 Reload
         </button>` : ''}
