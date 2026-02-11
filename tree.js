@@ -149,7 +149,7 @@ function renderTree(container, treeData) {
     wrapper.className = 'tree-wrapper';
 
     treeData.roots.forEach(root => {
-        wrapper.appendChild(renderTreeNode(root));
+        wrapper.appendChild(renderTreeNode(root, 0));
     });
 
     container.appendChild(wrapper);
@@ -169,11 +169,13 @@ function renderTree(container, treeData) {
     container.appendChild(legend);
 }
 
-function renderTreeNode(task) {
+function renderTreeNode(task, depth) {
     const node = document.createElement('div');
     node.className = 'tree-node';
 
     const hasChildren = task.children && task.children.length > 0;
+    // Collapse children at depth >= 1 (only 1st-level children of roots are visible)
+    const startCollapsed = hasChildren && depth >= 1;
 
     // Header row
     const header = document.createElement('div');
@@ -187,8 +189,10 @@ function renderTreeNode(task) {
     const toggle = document.createElement('span');
     toggle.className = 'tree-toggle';
     if (hasChildren) {
-        toggle.textContent = '\u25BC'; // ▼
-        toggle.onclick = function (e) {
+        toggle.textContent = startCollapsed ? '\u25B6' : '\u25BC'; // ▶ or ▼
+        header.style.cursor = 'pointer';
+        header.onclick = function (e) {
+            if (e.target.tagName === 'A') return; // don't toggle when clicking links
             e.stopPropagation();
             const childContainer = node.querySelector('.tree-children');
             if (childContainer.style.display === 'none') {
@@ -201,7 +205,6 @@ function renderTreeNode(task) {
         };
     } else {
         toggle.textContent = '\u2022'; // bullet
-        toggle.style.cursor = 'default';
     }
     header.appendChild(toggle);
 
@@ -243,9 +246,10 @@ function renderTreeNode(task) {
     if (hasChildren) {
         const childContainer = document.createElement('div');
         childContainer.className = 'tree-children';
+        if (startCollapsed) childContainer.style.display = 'none';
 
         task.children.forEach(child => {
-            childContainer.appendChild(renderTreeNode(child));
+            childContainer.appendChild(renderTreeNode(child, depth + 1));
         });
 
         node.appendChild(childContainer);
