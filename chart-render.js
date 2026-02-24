@@ -62,13 +62,13 @@ function checkRisk() {
             itemDiv.className = 'risk-item';
 
             const header = document.createElement('h3');
-            header.textContent = `${assignee} (Total: ${riskData.total.toFixed(2)} hrs)`;
+            header.textContent = `${assignee} (Total: ${riskData.total.toFixed(1)} hrs)`;
             itemDiv.appendChild(header);
 
             const ul = document.createElement('ul');
             riskData.details.forEach(detail => {
                 const li = document.createElement('li');
-                li.innerHTML = `<strong>${detail.enhancement}</strong>: <span class="risk-time">${detail.time.toFixed(2)} hrs</span>`;
+                li.innerHTML = `<strong>${detail.enhancement}</strong>: <span class="risk-time">${detail.time.toFixed(1)} hrs</span>`;
                 ul.appendChild(li);
             });
             itemDiv.appendChild(ul);
@@ -366,7 +366,7 @@ function createChartSection(container, title, index, groupedData, rawData, globa
                 if (blockedOnly) {
                     filtered = filtered.filter(t => t.isBlocked);
                 }
-                return filtered.reduce((sum, t) => sum + (t[metricKey] || 0), 0) / 60;
+                return parseFloat((filtered.reduce((sum, t) => sum + (t[metricKey] || 0), 0) / 60).toFixed(1));
             });
 
             const formattedTasksArray = rawTasksArray.map(dayTasks => {
@@ -380,7 +380,7 @@ function createChartSection(container, title, index, groupedData, rawData, globa
                 return filtered
                     .filter(t => t[metricKey] > 0)
                     .sort((a, b) => b[metricKey] - a[metricKey])
-                    .map(t => `[${(t[metricKey] / 60).toFixed(2)} hrs] ${t.title}`);
+                    .map(t => `[${(t[metricKey] / 60).toFixed(1)} hrs] ${t.title}`);
             });
 
             return {
@@ -400,7 +400,7 @@ function createChartSection(container, title, index, groupedData, rawData, globa
             const val = barDatasets[i].data[dates.length - 1];
             if (val > 0) {
                 latestLabels.push(assignee);
-                latestValues.push(parseFloat(val.toFixed(2)));
+                latestValues.push(parseFloat(val.toFixed(1)));
                 latestColors.push(colors[i % colors.length]);
                 latestTasks.push(barDatasets[i].tasks[dates.length - 1]);
             }
@@ -599,8 +599,8 @@ function createGlobalTimeLeftChart(groupedData, globalMaxDate, rawData) {
                                 const value = context.parsed;
                                 const total = context.dataset.data.reduce((a, b) => a + b, 0);
                                 const percentage = total > 0 ? ((value / total) * 100).toFixed(1) + '%' : '0%';
-                                const days = (value / 8).toFixed(2);
-                                return `${label}: ${value.toFixed(2)} hrs / ${days} days (${percentage})`;
+                                const days = (value / 8).toFixed(1);
+                                return `${label}: ${value.toFixed(1)} hrs / ${days} days (${percentage})`;
                             }
                         }
                     }

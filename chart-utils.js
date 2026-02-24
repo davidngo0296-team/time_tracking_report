@@ -79,7 +79,7 @@ function processDataForTimeSeries(data) {
         const taskTitle = row['Task title'];
         const taskType = (row['Type'] || '').toLowerCase();
         const taskStatus = (row['Status'] || '').toLowerCase();
-        const isQA = taskType.includes('qa');
+        const isQA = taskType === 'qa';
         const isBlocked = taskStatus.includes('blocked');
 
         if (!enhancements[title]) {
