@@ -10,12 +10,19 @@ let ganttChartInstance = null;
 /**
  * Build Gantt data for a specific enhancement
  */
-function buildGanttData(rawData, enhancementTitle, globalMaxDate) {
+function buildGanttData(rawData, enhancementTitle, globalMaxDate, filterValue) {
     // Filter tasks for this enhancement on the latest date
-    const tasks = rawData.filter(row =>
+    let tasks = rawData.filter(row =>
         row['Enhancement title'] === enhancementTitle &&
         row['Capture date'] === globalMaxDate
     );
+
+    // Apply QA/Non-QA filter
+    if (filterValue === 'qa') {
+        tasks = tasks.filter(row => (row['Type'] || '').toLowerCase() === 'qa');
+    } else if (filterValue === 'non-qa') {
+        tasks = tasks.filter(row => (row['Type'] || '').toLowerCase() !== 'qa');
+    }
 
     // Build set of identifiers that are parents (have at least 1 child)
     const parentIds = new Set();
@@ -187,8 +194,12 @@ function openGanttModal(index) {
     const rawData = window.rawParsedData || [];
     const globalMaxDate = window.globalMaxDate || '';
 
+    // Read current filter value from dropdown
+    const filterSelect = document.getElementById(`filter-${index}`);
+    const filterValue = filterSelect ? filterSelect.value : 'all';
+
     // Build Gantt data
-    const ganttData = buildGanttData(rawData, info.title, globalMaxDate);
+    const ganttData = buildGanttData(rawData, info.title, globalMaxDate, filterValue);
     ganttDataStore[index] = ganttData;
 
     // Render Gantt chart

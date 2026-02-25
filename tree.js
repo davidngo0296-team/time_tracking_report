@@ -5,12 +5,19 @@
 
 // --- Data Building ---
 
-function buildTreeData(rawData, enhancementTitle, globalMaxDate) {
+function buildTreeData(rawData, enhancementTitle, globalMaxDate, filterValue) {
     // Filter to this enhancement's latest date
-    const tasks = rawData.filter(row =>
+    let tasks = rawData.filter(row =>
         row['Enhancement title'] === enhancementTitle &&
         row['Capture date'] === globalMaxDate
     );
+
+    // Apply QA/Non-QA filter
+    if (filterValue === 'qa') {
+        tasks = tasks.filter(row => (row['Type'] || '').toLowerCase() === 'qa');
+    } else if (filterValue === 'non-qa') {
+        tasks = tasks.filter(row => (row['Type'] || '').toLowerCase() !== 'qa');
+    }
 
     // Build parentIds set for container detection
     const parentIds = new Set();
@@ -127,7 +134,11 @@ function openTreeModal(index) {
     const rawData = window.rawParsedData || [];
     const globalMaxDate = window.globalMaxDate || '';
 
-    const treeData = buildTreeData(rawData, info.title, globalMaxDate);
+    // Read current filter value from dropdown
+    const filterSelect = document.getElementById(`filter-${index}`);
+    const filterValue = filterSelect ? filterSelect.value : 'all';
+
+    const treeData = buildTreeData(rawData, info.title, globalMaxDate, filterValue);
     renderTree(container, treeData);
 }
 
