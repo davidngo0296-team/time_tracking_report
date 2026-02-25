@@ -100,7 +100,7 @@ function getTreeStatusColor(status) {
     const s = (status || '').toLowerCase();
     if (s === 'closed' || s === 'implemented on dev') return '#c8e6c9';
     if (s.includes('blocked by customer')) return '#ffe0b2';
-    if (s.includes('blocked'))             return '#ffcdd2';
+    if (s.includes('blocked') || s.includes('on hold')) return '#ffcdd2';
     if (s.includes('pending approval'))    return '#bbdefb';
     if (s.includes('peer review'))         return '#fff9c4';
     if (s.includes('in progress'))         return '#bbdefb';
@@ -111,7 +111,7 @@ function getTreeStatusClass(status) {
     const s = (status || '').toLowerCase();
     if (s === 'closed' || s === 'implemented on dev') return 'completed';
     if (s.includes('blocked by customer')) return 'blocked-customer';
-    if (s.includes('blocked'))             return 'blocked';
+    if (s.includes('blocked') || s.includes('on hold')) return 'blocked';
     if (s.includes('pending approval'))    return 'pending-approval';
     if (s.includes('peer review'))         return 'peer-review';
     if (s.includes('in progress'))         return 'in-progress';
@@ -171,7 +171,7 @@ function renderTree(container, treeData) {
     legend.style.marginTop = '16px';
     legend.innerHTML = `
         <div class="legend-item"><span class="legend-color" style="background:#bbdefb;"></span><span>In Progress / Pending Approval</span></div>
-        <div class="legend-item"><span class="legend-color" style="background:#ffcdd2;"></span><span>Blocked by OL</span></div>
+        <div class="legend-item"><span class="legend-color" style="background:#ffcdd2;"></span><span>Blocked by OL / On Hold</span></div>
         <div class="legend-item"><span class="legend-color" style="background:#ffe0b2;"></span><span>Blocked by Customer</span></div>
         <div class="legend-item"><span class="legend-color" style="background:#fff9c4;"></span><span>Needs Peer Review</span></div>
         <div class="legend-item"><span class="legend-color" style="background:#c8e6c9;"></span><span>Closed / Implemented on Dev</span></div>

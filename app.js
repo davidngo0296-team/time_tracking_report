@@ -5,7 +5,7 @@
 
 // Use sessionStorage so it survives reloads but clears on close
 let userToken = sessionStorage.getItem('ol_api_token') || '';
-let hasAddedTickets = false;
+let newlyAddedTickets = [];
 let hasRemovedTickets = false;
 
 // --- Token Management ---
@@ -17,15 +17,15 @@ function clearToken() {
 
 // --- Modal Management ---
 function openTicketModal() {
-    hasAddedTickets = false;
+    newlyAddedTickets = [];
     hasRemovedTickets = false;
     document.getElementById('ticket-modal').classList.add('show');
 }
 
 function closeTicketModal() {
     document.getElementById('ticket-modal').classList.remove('show');
-    if (hasAddedTickets) {
-        updateData();
+    if (newlyAddedTickets.length > 0) {
+        updateData(newlyAddedTickets);
     } else if (hasRemovedTickets) {
         location.reload();
     }
@@ -52,7 +52,7 @@ let currentTicketIds = JSON.parse(localStorage.getItem('tracked_tickets')) || DE
 function saveTickets(action) {
     localStorage.setItem('tracked_tickets', JSON.stringify(currentTicketIds));
     renderTickets();
-    if (action === 'add') hasAddedTickets = true;
+    // newlyAddedTickets is updated directly in addTicketFromInput()
     if (action === 'remove') hasRemovedTickets = true;
 }
 
@@ -79,6 +79,7 @@ function addTicketFromInput() {
     if (id) {
         if (!currentTicketIds.includes(id)) {
             currentTicketIds.push(id);
+            newlyAddedTickets.push(id);
             saveTickets('add');
             input.value = '';
         } else {
@@ -113,12 +114,14 @@ function parseTicketId(input) {
 }
 
 // --- Update Data & API Logic ---
-function updateData() {
+function updateData(ticketIds) {
     if (!userToken) {
         userToken = prompt("Please enter your OrangeLogic API Token:");
         if (!userToken) return;
         sessionStorage.setItem('ol_api_token', userToken);
     }
+
+    const idsToUpdate = ticketIds || currentTicketIds;
 
     const btn = document.getElementById('update-btn');
     const originalText = btn.innerHTML;
@@ -131,7 +134,7 @@ function updateData() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
             token: userToken,
-            ticketIds: currentTicketIds.join(',')
+            ticketIds: idsToUpdate.join(',')
         })
     })
         .then(async response => {

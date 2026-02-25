@@ -322,8 +322,8 @@ function renderGanttChart(container, ganttData) {
             if (status.includes('blocked by customer')) {
                 bar.style.backgroundColor = '#ffe0b2'; // Orange for blocked by customer
                 bar.classList.add('blocked-customer');
-            } else if (status.includes('blocked')) {
-                bar.style.backgroundColor = '#ffcdd2'; // Light red for blocked
+            } else if (status.includes('blocked') || status.includes('on hold')) {
+                bar.style.backgroundColor = '#ffcdd2'; // Light red for blocked / on hold
                 bar.classList.add('blocked');
             } else if (status.includes('pending approval')) {
                 bar.style.backgroundColor = '#bbdefb'; // Blue for pending approval
@@ -385,7 +385,7 @@ function renderGanttChart(container, ganttData) {
         </div>
         <div class="legend-item">
             <span class="legend-color" style="background: #ffcdd2;"></span>
-            <span>Blocked by OL</span>
+            <span>Blocked by OL / On Hold</span>
         </div>
         <div class="legend-item">
             <span class="legend-color" style="background: #ffe0b2;"></span>
