@@ -52,7 +52,7 @@ function buildGanttData(rawData, enhancementTitle, globalMaxDate, filterValue) {
 
         // Skip closed/obsolete tasks, or tasks with no time left unless awaiting peer review or a container
         const skipStatuses = ['obsolete', 'duplicate', 'closed', 'implemented on dev'];
-        const keepStatuses = ['needs peer review'];
+        const keepStatuses = ['needs peer review', 'pending approval'];
         const isContainer = parentIds.has(taskId);
         if (skipStatuses.includes(status) || (timeLeftHours <= 0 && !keepStatuses.includes(status) && !isContainer)) {
             return;
