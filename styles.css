@@ -1074,3 +1074,125 @@ h2 {
     flex-shrink: 0;
     text-transform: capitalize;
 }
+/* ======================================== */
+/* BLOCKERS BUTTON & MODAL STYLES           */
+/* ======================================== */
+
+.blockers-btn {
+    background: linear-gradient(135deg, #e74c3c, #c0392b);
+    color: white;
+    border: none;
+    padding: 6px 14px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9em;
+    font-weight: 500;
+    margin-left: 8px;
+    transition: all 0.2s;
+    opacity: 0.65;
+}
+
+.blockers-btn:hover {
+    background: linear-gradient(135deg, #c0392b, #a93226);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(231, 76, 60, 0.4);
+    opacity: 1;
+}
+
+.blockers-btn.has-blockers {
+    opacity: 1;
+}
+
+.blockers-textarea {
+    width: 100%;
+    min-height: 200px;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-family: monospace;
+    font-size: 2em;
+    resize: vertical;
+    box-sizing: border-box;
+    line-height: 1.6;
+}
+
+.blockers-textarea:focus {
+    outline: none;
+    border-color: #e74c3c;
+    box-shadow: 0 0 0 2px rgba(231, 76, 60, 0.15);
+}
+
+.blockers-modal-view {
+    font-size: 2em;
+    line-height: 1.7;
+    color: #333;
+    min-height: 60px;
+    white-space: normal;
+}
+
+.blockers-modal-view h2,
+.blockers-modal-view h3,
+.blockers-modal-view h4 {
+    margin: 10px 0 4px;
+}
+
+.blockers-modal-view ul {
+    margin: 4px 0;
+    padding-left: 20px;
+}
+
+.blockers-modal-view li {
+    margin: 3px 0;
+}
+
+.blockers-modal-view p {
+    margin: 4px 0;
+}
+
+.blockers-placeholder {
+    color: #bbb;
+    font-style: italic;
+    font-size: 0.9em;
+}
+
+#blockers-footer-view,
+#blockers-footer-edit {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+}
+
+.blockers-edit-btn {
+    background: linear-gradient(135deg, #e67e22, #d35400);
+    color: white;
+    border: none;
+    padding: 8px 18px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9em;
+    font-weight: 500;
+}
+
+.blockers-edit-btn:hover {
+    background: linear-gradient(135deg, #d35400, #ba4a00);
+}
+
+.blockers-save-btn {
+    background: #27ae60;
+    color: white;
+    border: none;
+    padding: 8px 20px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9em;
+    font-weight: 500;
+}
+
+.blockers-save-btn:hover {
+    background: #219a52;
+}
+
+.blockers-save-btn:disabled {
+    opacity: 0.6;
+    cursor: default;
+}

@@ -64,6 +64,39 @@ const server = http.createServer((req, res) => {
         return;
     }
 
+    // Serve enhancement metadata
+    if (req.method === 'GET' && req.url === '/enhancement-meta') {
+        const metaPath = path.join(__dirname, 'enhancement_meta.json');
+        const data = fs.existsSync(metaPath) ? fs.readFileSync(metaPath, 'utf8') : '{}';
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(data);
+        return;
+    }
+
+    if (req.method === 'POST' && req.url === '/enhancement-meta') {
+        let body = '';
+        req.on('data', chunk => { body += chunk.toString(); });
+        req.on('end', () => {
+            try {
+                const { ticketId, field, value } = JSON.parse(body);
+                const metaPath = path.join(__dirname, 'enhancement_meta.json');
+                let meta = {};
+                if (fs.existsSync(metaPath)) {
+                    meta = JSON.parse(fs.readFileSync(metaPath, 'utf8'));
+                }
+                if (!meta[ticketId]) meta[ticketId] = {};
+                meta[ticketId][field] = value;
+                fs.writeFileSync(metaPath, JSON.stringify(meta, null, 2), 'utf8');
+                res.writeHead(200, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ success: true }));
+            } catch (e) {
+                res.writeHead(400, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ success: false, error: e.message }));
+            }
+        });
+        return;
+    }
+
     // Handle Script execution (Now native JS)
     if (req.method === 'POST' && req.url === '/run-update-script') {
         let body = '';
@@ -348,6 +381,11 @@ async function runUpdateLogic(token, ticketIdsStr) {
                 // Team backfill
                 if (existingRow['Enhancement title'] === enhancementTitle && (!existingRow['Main Dev Team'] || existingRow['Main Dev Team'] === '')) {
                     existingRow['Main Dev Team'] = newRow['Main Dev Team'];
+                }
+                // Enhancement title rename backfill (if ticket was renamed on Link)
+                if (existingRow['Ticket ID'] === newRow['Ticket ID'] && existingRow['Enhancement title'] !== enhancementTitle) {
+                    log(`    Renaming old title "${existingRow['Enhancement title']}" → "${enhancementTitle}"`);
+                    existingRow['Enhancement title'] = enhancementTitle;
                 }
             });
 

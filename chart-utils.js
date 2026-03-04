@@ -170,3 +170,54 @@ function formatETA(etaString) {
     const cleaned = etaString.replace(/^0/, '').trim();
     return cleaned;
 }
+
+/**
+ * Minimal markdown renderer (headers, bold, italic, bullet lists)
+ */
+function renderMarkdown(text) {
+    if (!text || !text.trim()) return '';
+
+    // Escape HTML
+    let safe = text
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+
+    // Process line by line for lists, then inline styles
+    const lines = safe.split('\n');
+    const result = [];
+    let inList = false;
+
+    lines.forEach(line => {
+        // Headers
+        if (line.match(/^### /)) {
+            if (inList) { result.push('</ul>'); inList = false; }
+            result.push('<h4>' + line.slice(4) + '</h4>');
+        } else if (line.match(/^## /)) {
+            if (inList) { result.push('</ul>'); inList = false; }
+            result.push('<h3>' + line.slice(3) + '</h3>');
+        } else if (line.match(/^# /)) {
+            if (inList) { result.push('</ul>'); inList = false; }
+            result.push('<h2>' + line.slice(2) + '</h2>');
+        // Bullet list items
+        } else if (line.match(/^- /)) {
+            if (!inList) { result.push('<ul>'); inList = true; }
+            result.push('<li>' + line.slice(2) + '</li>');
+        // Empty line
+        } else if (!line.trim()) {
+            if (inList) { result.push('</ul>'); inList = false; }
+            result.push('<br>');
+        // Normal paragraph
+        } else {
+            if (inList) { result.push('</ul>'); inList = false; }
+            result.push('<p>' + line + '</p>');
+        }
+    });
+
+    if (inList) result.push('</ul>');
+
+    // Inline: bold and italic
+    return result.join('')
+        .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+        .replace(/\*(.+?)\*/g, '<em>$1</em>');
+}

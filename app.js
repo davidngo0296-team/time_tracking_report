@@ -290,14 +290,108 @@ function refreshEnhancementSection(ticketId, btn) {
         });
 }
 
+// --- Blockers ---
+let currentBlockersTicketId = '';
+let currentBlockersIndex = null;
+
+function openBlockersModal(ticketId, index) {
+    currentBlockersTicketId = ticketId;
+    currentBlockersIndex = index;
+    const meta = window.enhancementMeta || {};
+    const blockers = (meta[ticketId] && meta[ticketId].blockers) || '';
+    const viewEl = document.getElementById('blockers-modal-view');
+    viewEl.innerHTML = blockers.trim()
+        ? renderMarkdown(blockers)
+        : '<span class="blockers-placeholder">No blockers noted.</span>';
+    document.getElementById('blockers-modal-textarea').style.display = 'none';
+    document.getElementById('blockers-modal-view').style.display = 'block';
+    document.getElementById('blockers-footer-view').style.display = 'flex';
+    document.getElementById('blockers-footer-edit').style.display = 'none';
+    document.getElementById('blockers-modal').classList.add('show');
+}
+
+function editBlockersModal() {
+    const meta = window.enhancementMeta || {};
+    const blockers = (meta[currentBlockersTicketId] && meta[currentBlockersTicketId].blockers) || '';
+    document.getElementById('blockers-modal-textarea').value = blockers;
+    document.getElementById('blockers-modal-view').style.display = 'none';
+    document.getElementById('blockers-modal-textarea').style.display = 'block';
+    document.getElementById('blockers-footer-view').style.display = 'none';
+    document.getElementById('blockers-footer-edit').style.display = 'flex';
+    document.getElementById('blockers-modal-textarea').focus();
+}
+
+function cancelBlockersEdit() {
+    document.getElementById('blockers-modal-view').style.display = 'block';
+    document.getElementById('blockers-modal-textarea').style.display = 'none';
+    document.getElementById('blockers-footer-view').style.display = 'flex';
+    document.getElementById('blockers-footer-edit').style.display = 'none';
+}
+
+function closeBlockersModal() {
+    document.getElementById('blockers-modal').classList.remove('show');
+}
+
+function saveBlockers() {
+    const ticketId = currentBlockersTicketId;
+    const value = document.getElementById('blockers-modal-textarea').value;
+    const btn = document.getElementById('blockers-save-btn');
+
+    btn.textContent = 'Saving...';
+    btn.disabled = true;
+
+    fetch('/enhancement-meta', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ticketId, field: 'blockers', value })
+    })
+        .then(r => r.json())
+        .then(result => {
+            if (!result.success) throw new Error(result.error);
+
+            // Update global cache
+            if (!window.enhancementMeta) window.enhancementMeta = {};
+            if (!window.enhancementMeta[ticketId]) window.enhancementMeta[ticketId] = {};
+            window.enhancementMeta[ticketId].blockers = value;
+
+            // Update button indicator
+            const blockersBtn = document.getElementById(`blockers-btn-${currentBlockersIndex}`);
+            if (blockersBtn) {
+                if (value.trim().length > 0) {
+                    blockersBtn.classList.add('has-blockers');
+                } else {
+                    blockersBtn.classList.remove('has-blockers');
+                }
+            }
+
+            // Switch back to view mode
+            const viewEl = document.getElementById('blockers-modal-view');
+            viewEl.innerHTML = value.trim()
+                ? renderMarkdown(value)
+                : '<span class="blockers-placeholder">No blockers noted.</span>';
+            cancelBlockersEdit();
+        })
+        .catch(err => showErrorModal('Failed to save blockers: ' + err.message))
+        .finally(() => {
+            btn.textContent = 'Save';
+            btn.disabled = false;
+        });
+}
+
 // --- Initialization ---
 function initializeApp() {
     // Render tickets UI
     renderTickets();
 
-    // Load and process CSV data
-    fetch('Time_tracking_data.csv')
-        .then(response => response.text())
+    // Fetch CSV and enhancement meta in parallel
+    Promise.all([
+        fetch('Time_tracking_data.csv').then(r => r.text()),
+        fetch('/enhancement-meta').then(r => r.json()).catch(() => ({}))
+    ])
+        .then(([csvText, meta]) => {
+            window.enhancementMeta = meta;
+            return csvText;
+        })
         .then(csvText => {
             const parsedData = parseCSV(csvText);
             const groupedData = processDataForTimeSeries(parsedData);

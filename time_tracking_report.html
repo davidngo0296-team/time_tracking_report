@@ -118,6 +118,27 @@
         </div>
     </div>
 
+    <!-- Blockers Modal -->
+    <div id="blockers-modal" class="modal-overlay">
+        <div class="modal-content" style="border-left: 5px solid #e74c3c; max-width: 700px;">
+            <div class="modal-header" id="blockers-modal-title" style="color: #c0392b;">🚧 Blockers</div>
+            <div class="modal-body">
+                <div id="blockers-modal-view" class="blockers-modal-view"></div>
+                <textarea id="blockers-modal-textarea" class="blockers-textarea" style="display:none" placeholder="Describe blockers in markdown...&#10;&#10;Supports: **bold**, *italic*, # headings, - bullet lists"></textarea>
+            </div>
+            <div class="modal-footer">
+                <div id="blockers-footer-view">
+                    <button class="blockers-edit-btn" onclick="editBlockersModal()">✏️ Edit</button>
+                    <button class="modal-btn" onclick="closeBlockersModal()" style="background: #95a5a6;">Close</button>
+                </div>
+                <div id="blockers-footer-edit" style="display:none">
+                    <button class="blockers-save-btn" id="blockers-save-btn" onclick="saveBlockers()">Save</button>
+                    <button class="modal-btn" onclick="cancelBlockersEdit()" style="background: #95a5a6;">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- JavaScript Files -->
     <script src="chart-utils.js"></script>
     <script src="chart-render.js"></script>
