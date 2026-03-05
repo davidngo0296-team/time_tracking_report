@@ -622,17 +622,27 @@ function createGlobalTimeLeftChart(groupedData, globalMaxDate, rawData) {
 function createNoETASection(rawData, globalMaxDate) {
     document.getElementById('no-eta-date-display').textContent = globalMaxDate;
 
-    const allowedTypes = ['development', 'defect - qa vietnam'];
-    const excludedStatuses = ['obsolete', 'implemented on dev', 'closed', 'duplicate'];
+    const allowedTypes = ['development', 'defect - qa vietnam', 'qa'];
+    const excludedStatuses = ['obsolete', 'implemented on dev', 'closed', 'duplicate', 'needs peer review'];
+
+    // Build identifier → status map for latest date
+    const taskStatusMap = {};
+    rawData.forEach(row => {
+        if (row['Capture date'] === globalMaxDate && row['Task Identifier']) {
+            taskStatusMap[row['Task Identifier']] = (row['Status'] || '').trim().toLowerCase();
+        }
+    });
 
     const noETATasks = rawData.filter(row => {
         const type = (row['Type'] || '').trim().toLowerCase();
         const status = (row['Status'] || '').trim().toLowerCase();
+        const parentStatus = taskStatusMap[row['Parent Folder']] || '';
 
         return row['Capture date'] === globalMaxDate &&
             (!row['ETA'] || row['ETA'].trim() === '') &&
             allowedTypes.includes(type) &&
-            !excludedStatuses.includes(status);
+            !excludedStatuses.includes(status) &&
+            parentStatus !== 'obsolete';
     });
 
     const groupedByEnhancement = {};
