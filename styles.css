@@ -1075,6 +1075,88 @@ h2 {
     text-transform: capitalize;
 }
 /* ======================================== */
+/* UPDATE SELECTION MODAL STYLES            */
+/* ======================================== */
+
+.update-checkbox-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.update-checkbox-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    border: 1px solid #eee;
+    background: #fafafa;
+}
+
+.update-checkbox-item:hover {
+    background: #f0f4f8;
+    border-color: #d0d7de;
+}
+
+.update-checkbox-item input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.update-checkbox-id {
+    background: #7f8c8d;
+    color: white;
+    padding: 2px 7px;
+    border-radius: 10px;
+    font-size: 0.78em;
+    font-weight: bold;
+    flex-shrink: 0;
+}
+
+.update-checkbox-title {
+    font-size: 0.9em;
+    color: #333;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.update-select-btn {
+    background: #ecf0f1;
+    border: 1px solid #ddd;
+    padding: 4px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.85em;
+    color: #555;
+}
+
+.update-select-btn:hover {
+    background: #dde1e7;
+}
+
+.update-confirm-btn {
+    background: linear-gradient(135deg, #2980b9, #1a6da0);
+    color: white;
+    border: none;
+    padding: 8px 20px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9em;
+    font-weight: 500;
+}
+
+.update-confirm-btn:hover {
+    background: linear-gradient(135deg, #1a6da0, #155d8a);
+}
+
+/* ======================================== */
 /* BLOCKERS BUTTON & MODAL STYLES           */
 /* ======================================== */
 

@@ -198,10 +198,23 @@ function renderChart(canvasId, type) {
                             font: legendFontCallback
                         }
                     },
-                    title: { display: true, text: data.title + ' (Trend)' },
+                    title: { display: true, text: (() => {
+                        if (data.title === 'Time Left') {
+                            const total = parseFloat(data.latest.values.reduce((a, b) => a + b, 0).toFixed(1));
+                            const days = (total / 6.5).toFixed(1);
+                            return `${data.title} (Trend) — ${total} hrs (${days} days)`;
+                        }
+                        return data.title + ' (Trend)';
+                    })() },
                     tooltip: {
                         padding: 10,
                         callbacks: {
+                            label: function (context) {
+                                const assignee = context.dataset.label || '';
+                                const value = context.parsed.y;
+                                const days = (value / 6.5).toFixed(1);
+                                return `${assignee}: ${value} hrs (${days} days)`;
+                            },
                             footer: function (tooltipItems) {
                                 const item = tooltipItems[0];
                                 const tasks = item.dataset.tasks ? item.dataset.tasks[item.dataIndex] : [];
@@ -254,7 +267,8 @@ function renderChart(canvasId, type) {
                                 const value = context.parsed;
                                 const total = context.dataset.data.reduce((a, b) => a + b, 0);
                                 const percentage = total > 0 ? ((value / total) * 100).toFixed(1) + '%' : '0%';
-                                return `${label}: ${value} hrs (${percentage})`;
+                                const days = (value / 6.5).toFixed(1);
+                                return `${label}: ${value} hrs (${days} days) (${percentage})`;
                             },
                             footer: function (tooltipItems) {
                                 const item = tooltipItems[0];
@@ -302,6 +316,8 @@ function createChartSection(container, title, index, groupedData, rawData, globa
 
     const header = document.createElement('h2');
 
+    const enhancementStatus = enhancementTask ? (enhancementTask['Enhancement Status'] || '').trim() : '';
+
     let importanceBadge = '';
     if (importance) {
         importanceBadge = `<span style="background: #e74c3c; color: white; padding: 2px 8px; border-radius: 12px; font-size: 0.7em; margin-right: 8px; font-weight: bold;">#${importance}</span>`;
@@ -312,20 +328,37 @@ function createChartSection(container, title, index, groupedData, rawData, globa
         ticketBadge = `<span style="background: #7f8c8d; color: white; padding: 2px 8px; border-radius: 12px; font-size: 0.7em; margin-right: 8px; font-weight: bold;">${ticketId}</span>`;
     }
 
+    let statusBadge = '';
+    if (enhancementStatus) {
+        const statusLower = enhancementStatus.toLowerCase();
+        let statusColor = '#7f8c8d';
+        if (statusLower.includes('blocked') || statusLower.includes('on hold')) statusColor = '#e74c3c';
+        else if (statusLower.includes('in development')) statusColor = '#2980b9';
+        else if (statusLower.includes('in review')) statusColor = '#f39c12';
+        else if (statusLower.includes('testing') || statusLower.includes('peer review')) statusColor = '#16a085';
+        else if (statusLower === 'closed' || statusLower.includes('implemented')) statusColor = '#27ae60';
+        else if (statusLower.includes('in vetting')) statusColor = '#8e44ad';
+        else if (statusLower.includes('pending') || statusLower === 'to be vetted') statusColor = '#95a5a6';
+        statusBadge = `<span style="background: ${statusColor}; color: white; padding: 2px 8px; border-radius: 12px; font-size: 0.7em; margin-right: 8px; font-weight: bold;">${enhancementStatus}</span>`;
+    }
+
+    const meta = window.enhancementMeta || {};
+    const hasBlockers = ticketId && meta[ticketId] && (meta[ticketId].blockers || '').trim().length > 0;
+
+    let blockerWarning = hasBlockers
+        ? `<span title="Has blockers" style="color: #e67e22; font-size: 0.85em; margin-right: 6px;">⚠️</span>`
+        : '';
+
     let titleHtml = enhancementUrl
         ? `<a href="${enhancementUrl}" target="_blank" style="color: inherit; text-decoration: none;">${title}</a>`
         : title;
 
     if (enhancementETA) {
-        header.innerHTML = `${importanceBadge}${ticketBadge}${titleHtml} <span style="color: #3498db; font-size: 0.8em; font-weight: normal;">(ETA ${enhancementETA})</span>`;
+        header.innerHTML = `${importanceBadge}${ticketBadge}${statusBadge}${blockerWarning}${titleHtml} <span style="color: #3498db; font-size: 0.8em; font-weight: normal;">(ETA ${enhancementETA})</span>`;
     } else {
-        header.innerHTML = `${importanceBadge}${ticketBadge}${titleHtml}`;
+        header.innerHTML = `${importanceBadge}${ticketBadge}${statusBadge}${blockerWarning}${titleHtml}`;
     }
     section.appendChild(header);
-
-    // Task type filter and Gantt button
-    const meta = window.enhancementMeta || {};
-    const hasBlockers = ticketId && meta[ticketId] && (meta[ticketId].blockers || '').trim().length > 0;
     const filterDiv = document.createElement('div');
     filterDiv.className = 'enhancement-filter';
     filterDiv.innerHTML = `
@@ -341,7 +374,7 @@ function createChartSection(container, title, index, groupedData, rawData, globa
         <button class="tree-btn" onclick="openTreeModal(${index})" title="View Task Tree">
             🌳 Task Tree
         </button>
-        ${ticketId ? `<button class="reload-btn" onclick="reloadEnhancement('${ticketId}', this)" title="Reload data for this enhancement">
+        ${ticketId ? `<button class="reload-btn" id="reload-btn-${ticketId}" onclick="reloadEnhancement('${ticketId}', this)" title="Reload data for this enhancement">
             🔄 Reload
         </button>
         <button class="blockers-btn${hasBlockers ? ' has-blockers' : ''}" id="blockers-btn-${index}" onclick="openBlockersModal('${ticketId}', ${index})" title="Edit blockers">
@@ -596,7 +629,7 @@ function createGlobalTimeLeftChart(groupedData, globalMaxDate, rawData) {
                     legend: { position: 'right' },
                     title: {
                         display: true,
-                        text: `${teamName} (${totalHours.toFixed(1)} hrs / ${(totalHours / 8).toFixed(1)} days)`
+                        text: `${teamName} (${totalHours.toFixed(1)} hrs / ${(totalHours / 6.5).toFixed(1)} days)`
                     },
                     tooltip: {
                         callbacks: {
@@ -605,8 +638,8 @@ function createGlobalTimeLeftChart(groupedData, globalMaxDate, rawData) {
                                 const value = context.parsed;
                                 const total = context.dataset.data.reduce((a, b) => a + b, 0);
                                 const percentage = total > 0 ? ((value / total) * 100).toFixed(1) + '%' : '0%';
-                                const days = (value / 8).toFixed(1);
-                                return `${label}: ${value.toFixed(1)} hrs / ${days} days (${percentage})`;
+                                const days = (value / 6.5).toFixed(1);
+                                return `${label}: ${value.toFixed(1)} hrs (${days} days) (${percentage})`;
                             }
                         }
                     }
@@ -623,7 +656,7 @@ function createNoETASection(rawData, globalMaxDate) {
     document.getElementById('no-eta-date-display').textContent = globalMaxDate;
 
     const allowedTypes = ['development', 'defect - qa vietnam', 'qa'];
-    const excludedStatuses = ['obsolete', 'implemented on dev', 'closed', 'duplicate', 'needs peer review'];
+    const excludedStatuses = ['obsolete', 'implemented on dev', 'closed', 'duplicate', 'needs peer review', 'blocked by customer'];
 
     // Build identifier → status map for latest date
     const taskStatusMap = {};

@@ -118,6 +118,24 @@
         </div>
     </div>
 
+    <!-- Update Selection Modal -->
+    <div id="update-modal" class="modal-overlay">
+        <div class="modal-content" style="border-left: 5px solid #3498db; max-width: 600px;">
+            <div class="modal-header" style="color: #2980b9;">🔄 Select Enhancements to Update</div>
+            <div class="modal-body">
+                <div style="margin-bottom: 10px; display: flex; gap: 10px;">
+                    <button class="update-select-btn" onclick="toggleAllUpdateCheckboxes(true)">Select All</button>
+                    <button class="update-select-btn" onclick="toggleAllUpdateCheckboxes(false)">Deselect All</button>
+                </div>
+                <div id="update-checkbox-list" class="update-checkbox-list"></div>
+            </div>
+            <div class="modal-footer" style="display: flex; gap: 10px; justify-content: flex-end;">
+                <button class="update-confirm-btn" onclick="confirmUpdate()">Fetch Selected</button>
+                <button class="modal-btn" onclick="closeUpdateModal()" style="background: #95a5a6;">Cancel</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Blockers Modal -->
     <div id="blockers-modal" class="modal-overlay">
         <div class="modal-content" style="border-left: 5px solid #e74c3c; max-width: 700px;">

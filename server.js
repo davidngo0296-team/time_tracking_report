@@ -181,6 +181,11 @@ async function runUpdateLogic(token, ticketIdsStr) {
         console.log("Migrating CSV to include Status...");
         trackingData.forEach(row => row['Status'] = '');
     }
+    // Migration: If no "Enhancement Status" field, add it
+    if (trackingData.length > 0 && !('Enhancement Status' in trackingData[0])) {
+        console.log("Migrating CSV to include Enhancement Status...");
+        trackingData.forEach(row => row['Enhancement Status'] = '');
+    }
     // Migration: If no "Importance" field, add it
     if (trackingData.length > 0 && !('Importance' in trackingData[0])) {
         console.log("Migrating CSV to include Importance...");
@@ -266,6 +271,12 @@ async function runUpdateLogic(token, ticketIdsStr) {
         }
         if (enhancementImportance) {
             log(`  Importance: ${enhancementImportance}`);
+        }
+
+        // Extract status of the enhancement ticket itself
+        const enhancementStatus = (enhancementTasks[0]["CoreField.Status"] || "").trim();
+        if (enhancementStatus) {
+            log(`  Status: ${enhancementStatus}`);
         }
 
         // 2. Get Direct Children
@@ -369,7 +380,8 @@ async function runUpdateLogic(token, ticketIdsStr) {
                 'Dependencies': dependencies,
                 'Estimated Start Date': estimatedStartDate,
                 'Estimated End Date': estimatedEndDate,
-                'Parent Folder': parentFolder
+                'Parent Folder': parentFolder,
+                'Enhancement Status': enhancementStatus
             };
 
             // Backfill History Logic

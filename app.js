@@ -115,13 +115,97 @@ function parseTicketId(input) {
 
 // --- Update Data & API Logic ---
 function updateData(ticketIds) {
+    // If called with specific IDs (e.g. from reload or new ticket), skip the selection modal
+    if (ticketIds) {
+        runUpdateData(ticketIds);
+        return;
+    }
+    openUpdateModal();
+}
+
+function openUpdateModal() {
+    const list = document.getElementById('update-checkbox-list');
+    list.innerHTML = '';
+
+    const parsedData = window.rawParsedData || [];
+
+    // Build title and importance maps using the latest date seen per ticket
+    const latestDateMap = {};
+    const titleMap = {};
+    const importanceMap = {};
+    parsedData.forEach(row => {
+        const tid = row['Ticket ID'];
+        if (!tid) return;
+        if (!latestDateMap[tid] || row['Capture date'] > latestDateMap[tid]) {
+            latestDateMap[tid] = row['Capture date'];
+            titleMap[tid] = row['Enhancement title'] || '';
+        }
+        if (row['Importance'] && !importanceMap[tid]) {
+            importanceMap[tid] = row['Importance'];
+        }
+    });
+
+    // Sort by importance, matching page order
+    const sortedIds = [...currentTicketIds].sort((a, b) => {
+        const impA = importanceMap[a];
+        const impB = importanceMap[b];
+        if (!impA && !impB) return 0;
+        if (!impA) return 1;
+        if (!impB) return -1;
+        return (parseInt(impA) || 999) - (parseInt(impB) || 999);
+    });
+
+    sortedIds.forEach(id => {
+        const title = titleMap[id] || '(not yet fetched)';
+        const item = document.createElement('label');
+        item.className = 'update-checkbox-item';
+        item.innerHTML = `
+            <input type="checkbox" class="update-checkbox" value="${id}" checked>
+            <span class="update-checkbox-id">${id}</span>
+            <span class="update-checkbox-title">${title}</span>
+        `;
+        list.appendChild(item);
+    });
+
+    document.getElementById('update-modal').classList.add('show');
+}
+
+function closeUpdateModal() {
+    document.getElementById('update-modal').classList.remove('show');
+}
+
+function toggleAllUpdateCheckboxes(checked) {
+    document.querySelectorAll('.update-checkbox').forEach(cb => cb.checked = checked);
+}
+
+function confirmUpdate() {
+    const selected = [...document.querySelectorAll('.update-checkbox:checked')].map(cb => cb.value);
+    if (selected.length === 0) {
+        alert('Please select at least one enhancement.');
+        return;
+    }
+    closeUpdateModal();
+
+    // Set each selected enhancement's reload button to reloading state
+    selected.forEach(id => {
+        const btn = document.getElementById(`reload-btn-${id}`);
+        if (btn) {
+            btn.innerHTML = '⏳ Reloading...';
+            btn.disabled = true;
+        }
+    });
+
+    runUpdateData(selected);
+}
+
+function runUpdateData(ticketIds) {
     if (!userToken) {
         userToken = prompt("Please enter your OrangeLogic API Token:");
         if (!userToken) return;
         sessionStorage.setItem('ol_api_token', userToken);
     }
 
-    const idsToUpdate = ticketIds || currentTicketIds;
+    const idsToUpdate = ticketIds;
 
     const btn = document.getElementById('update-btn');
     const originalText = btn.innerHTML;
