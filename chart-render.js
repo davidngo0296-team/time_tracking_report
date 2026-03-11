@@ -354,7 +354,7 @@ function createChartSection(container, title, index, groupedData, rawData, globa
         : title;
 
     if (enhancementETA) {
-        header.innerHTML = `${importanceBadge}${ticketBadge}${statusBadge}${blockerWarning}${titleHtml} <span style="color: #3498db; font-size: 0.8em; font-weight: normal;">(ETA ${enhancementETA})</span>`;
+        header.innerHTML = `${importanceBadge}${ticketBadge}${statusBadge}${blockerWarning}${titleHtml} <span id="eta-span-${index}" style="color: #3498db; font-size: 0.8em; font-weight: normal;">(ETA ${enhancementETA})</span>`;
     } else {
         header.innerHTML = `${importanceBadge}${ticketBadge}${statusBadge}${blockerWarning}${titleHtml}`;
     }
@@ -392,7 +392,7 @@ function createChartSection(container, title, index, groupedData, rawData, globa
     const assignees = Object.keys(groupedData[title].assignees);
 
     // Helper to build store data with filter support
-    const buildStoreData = (metricKey, label, filterFn = null, blockedOnly = false) => {
+    const buildStoreData = (metricKey, label, filterFn = null, blockedOnly = false, extraMetricKey = null) => {
         const barDatasets = assignees.map((assignee, i) => {
             const rawTasksArray = groupedData[title].assignees[assignee].tasks;
 
@@ -404,7 +404,9 @@ function createChartSection(container, title, index, groupedData, rawData, globa
                 if (blockedOnly) {
                     filtered = filtered.filter(t => t.isBlocked);
                 }
-                return parseFloat((filtered.reduce((sum, t) => sum + (t[metricKey] || 0), 0) / 60).toFixed(1));
+                const primary = filtered.reduce((sum, t) => sum + (t[metricKey] || 0), 0);
+                const extra = extraMetricKey ? filtered.reduce((sum, t) => sum + (t[extraMetricKey] || 0), 0) : 0;
+                return parseFloat(((primary + extra) / 60).toFixed(1));
             });
 
             const formattedTasksArray = rawTasksArray.map(dayTasks => {
@@ -416,9 +418,9 @@ function createChartSection(container, title, index, groupedData, rawData, globa
                     filtered = filtered.filter(t => t.isBlocked);
                 }
                 return filtered
-                    .filter(t => t[metricKey] > 0)
-                    .sort((a, b) => b[metricKey] - a[metricKey])
-                    .map(t => `[${(t[metricKey] / 60).toFixed(1)} hrs] ${t.title}`);
+                    .filter(t => (t[metricKey] || 0) + (extraMetricKey ? (t[extraMetricKey] || 0) : 0) > 0)
+                    .sort((a, b) => ((b[metricKey] || 0) + (extraMetricKey ? (b[extraMetricKey] || 0) : 0)) - ((a[metricKey] || 0) + (extraMetricKey ? (a[extraMetricKey] || 0) : 0)))
+                    .map(t => `[${(((t[metricKey] || 0) + (extraMetricKey ? (t[extraMetricKey] || 0) : 0)) / 60).toFixed(1)} hrs] ${t.title}`);
             });
 
             return {
@@ -470,11 +472,12 @@ function createChartSection(container, title, index, groupedData, rawData, globa
         buildStoreData: buildStoreData
     };
 
-    // Create 3 charts: Spent, Left, Blocked
+    // Create 4 charts: Spent, Left, Blocked (hidden), Estimate
     const chartConfigs = [
-        { metric: 'Spent', key: 'spent', blockedOnly: false },
-        { metric: 'Left', key: 'left', blockedOnly: false },
-        { metric: 'Blocked', key: 'left', blockedOnly: true }
+        { metric: 'Spent', key: 'spent', metricKey: 'spent', blockedOnly: false, hidden: false },
+        { metric: 'Left', key: 'left', metricKey: 'left', blockedOnly: false, hidden: false },
+        { metric: 'Blocked', key: 'left', metricKey: 'left', blockedOnly: true, hidden: true },
+        { metric: 'Estimate', key: 'estimate', metricKey: 'spent', extraMetricKey: 'left', blockedOnly: false, hidden: false, chartLabel: 'Total Estimate' }
     ];
 
     chartConfigs.forEach(config => {
@@ -482,6 +485,7 @@ function createChartSection(container, title, index, groupedData, rawData, globa
 
         const wrapper = document.createElement('div');
         wrapper.className = 'chart-wrapper';
+        if (config.hidden) wrapper.style.display = 'none';
 
         const controls = document.createElement('div');
         controls.className = 'chart-controls';
@@ -500,8 +504,8 @@ function createChartSection(container, title, index, groupedData, rawData, globa
 
         chartsDiv.appendChild(wrapper);
 
-        const chartLabel = config.blockedOnly ? 'Time Left (Blocked)' : `Time ${config.metric}`;
-        chartStore[canvasId] = buildStoreData(config.key, chartLabel, null, config.blockedOnly);
+        const chartLabel = config.chartLabel || (config.blockedOnly ? 'Time Left (Blocked)' : `Time ${config.metric}`);
+        chartStore[canvasId] = buildStoreData(config.metricKey, chartLabel, null, config.blockedOnly, config.extraMetricKey || null);
     });
 
     section.appendChild(chartsDiv);
@@ -512,6 +516,7 @@ function createChartSection(container, title, index, groupedData, rawData, globa
     renderChart(`chart-spent-${index}`, 'bar');
     renderChart(`chart-left-${index}`, 'bar');
     renderChart(`chart-left-blocked-${index}`, 'bar');
+    renderChart(`chart-estimate-${index}`, 'bar');
 }
 
 /**
@@ -529,20 +534,27 @@ function applyEnhancementFilter(index, filterValue) {
     }
 
     const chartConfigs = [
-        { metric: 'Spent', key: 'spent', blockedOnly: false },
-        { metric: 'Left', key: 'left', blockedOnly: false },
-        { metric: 'Blocked', key: 'left', blockedOnly: true }
+        { metric: 'Spent', key: 'spent', metricKey: 'spent', blockedOnly: false },
+        { metric: 'Left', key: 'left', metricKey: 'left', blockedOnly: false },
+        { metric: 'Blocked', key: 'left', metricKey: 'left', blockedOnly: true },
+        { metric: 'Estimate', key: 'estimate', metricKey: 'spent', extraMetricKey: 'left', blockedOnly: false, chartLabel: 'Total Estimate' }
     ];
 
     chartConfigs.forEach(config => {
         const canvasId = `chart-${config.key}${config.blockedOnly ? '-blocked' : ''}-${index}`;
-        const chartLabel = config.blockedOnly ? 'Time Left (Blocked)' : `Time ${config.metric}`;
-        chartStore[canvasId] = info.buildStoreData(config.key, chartLabel, filterFn, config.blockedOnly);
+        const chartLabel = config.chartLabel || (config.blockedOnly ? 'Time Left (Blocked)' : `Time ${config.metric}`);
+        chartStore[canvasId] = info.buildStoreData(config.metricKey, chartLabel, filterFn, config.blockedOnly, config.extraMetricKey || null);
 
         const chart = chartInstances[canvasId];
         const viewType = chart ? chart.config.type : 'bar';
         renderChart(canvasId, viewType);
     });
+
+    // Hide ETA when filter is Non-QA (ETA comes from Development/QA tasks)
+    const etaSpan = document.getElementById(`eta-span-${index}`);
+    if (etaSpan) {
+        etaSpan.style.display = filterValue === 'non-qa' ? 'none' : '';
+    }
 }
 
 /**
