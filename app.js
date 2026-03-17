@@ -488,11 +488,12 @@ function initializeApp() {
             window.rawParsedData = parsedData;
             window.globalMaxDate = globalMaxDate;
 
-            // Get importance for each enhancement
+            // Get importance for each enhancement using its own latest date
             const getEnhancementImportance = (title) => {
+                const latestDate = groupedData[title].dates[groupedData[title].dates.length - 1];
                 const row = parsedData.find(r =>
                     r['Enhancement title'] === title &&
-                    r['Capture date'] === globalMaxDate &&
+                    r['Capture date'] === latestDate &&
                     r['Importance']
                 );
                 return row ? row['Importance'] : '';
@@ -500,7 +501,6 @@ function initializeApp() {
 
             // Sort enhancements by Importance (1 first, empty/unknown last)
             const sortedEnhancements = Object.keys(groupedData)
-                .filter(title => groupedData[title].dates.includes(globalMaxDate))
                 .sort((a, b) => {
                     const impA = getEnhancementImportance(a);
                     const impB = getEnhancementImportance(b);
@@ -515,7 +515,8 @@ function initializeApp() {
                 });
 
             sortedEnhancements.forEach((title, index) => {
-                createChartSection(container, title, index, groupedData, parsedData, globalMaxDate);
+                const enhancementMaxDate = groupedData[title].dates[groupedData[title].dates.length - 1];
+                createChartSection(container, title, index, groupedData, parsedData, enhancementMaxDate);
             });
 
             // Create Global Chart

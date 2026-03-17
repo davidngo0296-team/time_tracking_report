@@ -28,7 +28,7 @@ function buildTreeData(rawData, enhancementTitle, globalMaxDate, filterValue) {
 
     // Build task map and tree nodes, applying Gantt-like status filter
     const skipStatuses = ['obsolete', 'duplicate'];
-    const keepStatuses = ['needs peer review', 'pending approval', 'closed', 'implemented on dev'];
+    const keepStatuses = ['needs peer review', 'pending approval', 'closed', 'implemented on dev', 'in progress', 'not started', 'approved, pending action'];
     const taskMap = {};
     const nodes = [];
 
