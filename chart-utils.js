@@ -80,6 +80,7 @@ function processDataForTimeSeries(data) {
         const taskType = (row['Type'] || '').toLowerCase();
         const taskStatus = (row['Status'] || '').toLowerCase();
         const isQA = taskType === 'qa';
+        const isDefect = taskType.startsWith('defect');
         const isBlocked = taskStatus.includes('blocked');
 
         if (!enhancements[title]) {
@@ -103,6 +104,7 @@ function processDataForTimeSeries(data) {
             spent: spent,
             left: left,
             isQA: isQA,
+            isDefect: isDefect,
             isBlocked: isBlocked
         });
     });

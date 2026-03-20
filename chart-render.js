@@ -199,7 +199,7 @@ function renderChart(canvasId, type) {
                         }
                     },
                     title: { display: true, text: (() => {
-                        if (data.title === 'Time Left') {
+                        if (data.title === 'Time Left' || data.title === 'Total Estimate') {
                             const total = parseFloat(data.latest.values.reduce((a, b) => a + b, 0).toFixed(1));
                             const days = (total / 6.5).toFixed(1);
                             return `${data.title} (Trend) — ${total} hrs (${days} days)`;
@@ -364,9 +364,10 @@ function createChartSection(container, title, index, groupedData, rawData, globa
     filterDiv.innerHTML = `
         <label>Filter: </label>
         <select id="filter-${index}" onchange="applyEnhancementFilter(${index}, this.value)">
-            <option value="all" selected>All Tasks</option>
+            <option value="all">All Tasks</option>
             <option value="qa">QA Tasks</option>
             <option value="non-qa">Non-QA Tasks</option>
+            <option value="non-qa-non-defect" selected>Non-QA Non-Defect Tasks</option>
         </select>
         <button class="gantt-btn" onclick="openGanttModal(${index})" title="View Gantt Chart">
             📊 Gantt Chart
@@ -391,44 +392,65 @@ function createChartSection(container, title, index, groupedData, rawData, globa
     const latestDate = dates[dates.length - 1];
     const assignees = Object.keys(groupedData[title].assignees);
 
+    // Helper: convert hex color to rgba
+    const toRgba = (hex, alpha) => {
+        const r = parseInt(hex.slice(1, 3), 16);
+        const g = parseInt(hex.slice(3, 5), 16);
+        const b = parseInt(hex.slice(5, 7), 16);
+        return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+    };
+
     // Helper to build store data with filter support
     const buildStoreData = (metricKey, label, filterFn = null, blockedOnly = false, extraMetricKey = null) => {
-        const barDatasets = assignees.map((assignee, i) => {
+        const barDatasets = [];
+
+        assignees.forEach((assignee, i) => {
             const rawTasksArray = groupedData[title].assignees[assignee].tasks;
+            const baseColor = colors[i % colors.length];
 
-            const filteredValues = rawTasksArray.map(dayTasks => {
-                let filtered = dayTasks;
-                if (filterFn) {
-                    filtered = filtered.filter(filterFn);
-                }
-                if (blockedOnly) {
-                    filtered = filtered.filter(t => t.isBlocked);
-                }
-                const primary = filtered.reduce((sum, t) => sum + (t[metricKey] || 0), 0);
-                const extra = extraMetricKey ? filtered.reduce((sum, t) => sum + (t[extraMetricKey] || 0), 0) : 0;
-                return parseFloat(((primary + extra) / 60).toFixed(1));
+            // Check if assignee has any defect tasks (after outer filters)
+            const hasDefects = rawTasksArray.some(dayTasks =>
+                dayTasks.some(t => t.isDefect && (!filterFn || filterFn(t)) && (!blockedOnly || t.isBlocked))
+            );
+
+            const seriesConfigs = hasDefects
+                ? [
+                    { seriesLabel: `${assignee} - Dev`, defectOnly: false, color: baseColor },
+                    { seriesLabel: `${assignee} - Defect`, defectOnly: true, color: toRgba(baseColor, 0.5) }
+                  ]
+                : [
+                    { seriesLabel: assignee, defectOnly: false, color: baseColor }
+                  ];
+
+            seriesConfigs.forEach(({ seriesLabel, defectOnly, color }) => {
+                const filteredValues = rawTasksArray.map(dayTasks => {
+                    let filtered = dayTasks;
+                    if (filterFn) filtered = filtered.filter(filterFn);
+                    if (blockedOnly) filtered = filtered.filter(t => t.isBlocked);
+                    filtered = filtered.filter(t => defectOnly ? t.isDefect : !t.isDefect);
+                    const primary = filtered.reduce((sum, t) => sum + (t[metricKey] || 0), 0);
+                    const extra = extraMetricKey ? filtered.reduce((sum, t) => sum + (t[extraMetricKey] || 0), 0) : 0;
+                    return parseFloat(((primary + extra) / 60).toFixed(1));
+                });
+
+                const formattedTasksArray = rawTasksArray.map(dayTasks => {
+                    let filtered = dayTasks;
+                    if (filterFn) filtered = filtered.filter(filterFn);
+                    if (blockedOnly) filtered = filtered.filter(t => t.isBlocked);
+                    filtered = filtered.filter(t => defectOnly ? t.isDefect : !t.isDefect);
+                    return filtered
+                        .filter(t => (t[metricKey] || 0) + (extraMetricKey ? (t[extraMetricKey] || 0) : 0) > 0)
+                        .sort((a, b) => ((b[metricKey] || 0) + (extraMetricKey ? (b[extraMetricKey] || 0) : 0)) - ((a[metricKey] || 0) + (extraMetricKey ? (a[extraMetricKey] || 0) : 0)))
+                        .map(t => `[${(((t[metricKey] || 0) + (extraMetricKey ? (t[extraMetricKey] || 0) : 0)) / 60).toFixed(1)} hrs] ${t.title}`);
+                });
+
+                barDatasets.push({
+                    label: seriesLabel,
+                    data: filteredValues,
+                    tasks: formattedTasksArray,
+                    backgroundColor: color
+                });
             });
-
-            const formattedTasksArray = rawTasksArray.map(dayTasks => {
-                let filtered = dayTasks;
-                if (filterFn) {
-                    filtered = filtered.filter(filterFn);
-                }
-                if (blockedOnly) {
-                    filtered = filtered.filter(t => t.isBlocked);
-                }
-                return filtered
-                    .filter(t => (t[metricKey] || 0) + (extraMetricKey ? (t[extraMetricKey] || 0) : 0) > 0)
-                    .sort((a, b) => ((b[metricKey] || 0) + (extraMetricKey ? (b[extraMetricKey] || 0) : 0)) - ((a[metricKey] || 0) + (extraMetricKey ? (a[extraMetricKey] || 0) : 0)))
-                    .map(t => `[${(((t[metricKey] || 0) + (extraMetricKey ? (t[extraMetricKey] || 0) : 0)) / 60).toFixed(1)} hrs] ${t.title}`);
-            });
-
-            return {
-                label: assignee,
-                data: filteredValues,
-                tasks: formattedTasksArray,
-                backgroundColor: colors[i % colors.length]
-            };
         });
 
         const latestValues = [];
@@ -436,13 +458,13 @@ function createChartSection(container, title, index, groupedData, rawData, globa
         const latestColors = [];
         const latestTasks = [];
 
-        assignees.forEach((assignee, i) => {
-            const val = barDatasets[i].data[dates.length - 1];
+        barDatasets.forEach(dataset => {
+            const val = dataset.data[dates.length - 1];
             if (val > 0) {
-                latestLabels.push(assignee);
+                latestLabels.push(dataset.label);
                 latestValues.push(parseFloat(val.toFixed(1)));
-                latestColors.push(colors[i % colors.length]);
-                latestTasks.push(barDatasets[i].tasks[dates.length - 1]);
+                latestColors.push(dataset.backgroundColor);
+                latestTasks.push(dataset.tasks[dates.length - 1]);
             }
         });
 
@@ -505,7 +527,8 @@ function createChartSection(container, title, index, groupedData, rawData, globa
         chartsDiv.appendChild(wrapper);
 
         const chartLabel = config.chartLabel || (config.blockedOnly ? 'Time Left (Blocked)' : `Time ${config.metric}`);
-        chartStore[canvasId] = buildStoreData(config.metricKey, chartLabel, null, config.blockedOnly, config.extraMetricKey || null);
+        const defaultFilterFn = t => !t.isQA && !t.isDefect;
+        chartStore[canvasId] = buildStoreData(config.metricKey, chartLabel, defaultFilterFn, config.blockedOnly, config.extraMetricKey || null);
     });
 
     section.appendChild(chartsDiv);
@@ -531,6 +554,8 @@ function applyEnhancementFilter(index, filterValue) {
         filterFn = t => t.isQA;
     } else if (filterValue === 'non-qa') {
         filterFn = t => !t.isQA;
+    } else if (filterValue === 'non-qa-non-defect') {
+        filterFn = t => !t.isQA && !t.isDefect;
     }
 
     const chartConfigs = [
@@ -553,7 +578,7 @@ function applyEnhancementFilter(index, filterValue) {
     // Hide ETA when filter is Non-QA (ETA comes from Development/QA tasks)
     const etaSpan = document.getElementById(`eta-span-${index}`);
     if (etaSpan) {
-        etaSpan.style.display = filterValue === 'non-qa' ? 'none' : '';
+        etaSpan.style.display = (filterValue === 'non-qa' || filterValue === 'non-qa-non-defect') ? 'none' : '';
     }
 }
 

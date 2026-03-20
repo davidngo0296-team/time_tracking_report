@@ -58,7 +58,7 @@ const server = http.createServer((req, res) => {
                 res.end('CSV file not found');
                 return;
             }
-            res.writeHead(200, { 'Content-Type': 'text/plain' });
+            res.writeHead(200, { 'Content-Type': 'text/plain', 'Cache-Control': 'no-cache, no-store, must-revalidate' });
             res.end(data);
         });
         return;
@@ -139,7 +139,7 @@ const server = http.createServer((req, res) => {
 
 // --- Logic ---
 
-const ALLOWED_TYPES = ["Development", "Configuration Request", "Defect - QA Vietnam", "Question", "QA", "Infrastructure Deployment", "Access Change Request"];
+const ALLOWED_TYPES = ["Development", "Configuration Request", "Defect - QA Vietnam", "Question", "QA", "Infrastructure Deployment", "Access Change Request", "Infrastructure Project", "Research Analysis", "Infrastructure Configuration"];
 const CONTAINER_TYPES = ["Development", "QA", "Infrastructure Deployment", "Access Change Request"];
 const NO_RECURSE_TYPES = ["Technical Debt Code"];
 const IGNORED_STATUSES = ["Obsolete", "Duplicate", "Closed", "Needs Peer Review", "Implemented on Dev", "In Revision", "Access granted", "Completed"];
@@ -295,6 +295,63 @@ async function runUpdateLogic(token, ticketIdsStr) {
             allTasks.push(...devDescendants);
         }
 
+        // 3.5. Supplement with known containers from CSV history that may have been cut off
+        // The main Parentfolderidentifier query is hard-capped at 100 items by the API.
+        // If a container (e.g. the Development folder) itself was cut off, its children are missing.
+        // We recover them by querying each known container ID directly.
+        {
+            const seenInAllTasks = new Set(allTasks.map(t => t["CoreField.Identifier"]));
+            const knownContainerIds = new Set();
+            trackingData.forEach(row => {
+                if (row['Enhancement title'] === enhancementTitle && row['Parent Folder']) {
+                    knownContainerIds.add(row['Parent Folder']);
+                }
+            });
+            for (const cId of knownContainerIds) {
+                if (seenInAllTasks.has(cId)) continue; // container itself found — its children already included
+                // Skip only if ALL known children of this container are already in allTasks
+                // (if only some are present, the rest may have been cut off by the 100-item cap)
+                const knownChildren = trackingData.filter(row =>
+                    row['Enhancement title'] === enhancementTitle &&
+                    row['Parent Folder'] === cId &&
+                    row['Task Identifier']
+                );
+                const allChildrenPresent = knownChildren.length > 0 &&
+                    knownChildren.every(row => seenInAllTasks.has(row['Task Identifier']));
+                if (allChildrenPresent) continue;
+                log(`    Supplementing from CSV-known container: ${cId}`);
+                const extra = await searchOLTask(`Parentfolderidentifier:("${cId}")`, token);
+                if (extra && extra.length > 0) {
+                    allTasks.push(...extra);
+                    extra.forEach(t => seenInAllTasks.add(t["CoreField.Identifier"]));
+                }
+            }
+        }
+
+        // 3.6: Direct lookup for tasks ever seen in CSV history but missing from allTasks
+        // Handles tasks that fall outside the 100-item cap at every nesting level
+        {
+            const fetchedIds = new Set(allTasks.map(t => t["CoreField.Identifier"]));
+            const missingIds = [...new Set(
+                trackingData
+                    .filter(row =>
+                        row['Enhancement title'] === enhancementTitle &&
+                        row['Capture date'] < captureDate &&
+                        row['Task Identifier'] &&
+                        !fetchedIds.has(row['Task Identifier'])
+                    )
+                    .map(row => row['Task Identifier'])
+            )];
+            for (const tid of missingIds) {
+                const found = await searchOLTask(`SystemIdentifier:("${tid}")`, token);
+                if (found && found.length > 0) {
+                    allTasks.push(found[0]);
+                    fetchedIds.add(tid);
+                    log(`    Direct lookup found: ${tid}`);
+                }
+            }
+        }
+
         // 4. Filter out tasks under excluded types (and their descendants)
         // Note: Parentfolderidentifier query returns ALL descendants, not just direct children,
         // so directChildren already contains nested tasks like children of "Technical Debt Code" containers.
@@ -329,7 +386,8 @@ async function runUpdateLogic(token, ticketIdsStr) {
         const seenIdentifiers = new Set();
         for (const task of allTasks) {
             const type = (task["CoreField.DocSubType"] || '').trim();
-            if (!ALLOWED_TYPES.includes(type)) continue;
+            if (NO_RECURSE_TYPES.includes(type)) continue;
+            if (type && !ALLOWED_TYPES.includes(type)) continue;
 
             const taskTitle = task["CoreField.Title"];
             const taskIdentifier = task["CoreField.Identifier"] || "";
@@ -454,11 +512,10 @@ async function getAllDescendants(parentId, token, log, depth = 1) {
         const childTitle = child["CoreField.Title"];
         const childType = (child["CoreField.DocSubType"] || '').trim();
 
-        if (!ALLOWED_TYPES.includes(childType)) continue; // Skip non-allowed types
         if (NO_RECURSE_TYPES.includes(childType)) continue; // Skip excluded types entirely
 
         all.push(child);
-        // Only recurse into container types (Development, QA)
+        // Only recurse into container types (Development, QA, etc.)
         if (childId && CONTAINER_TYPES.includes(childType)) {
             log(`${indent}Checking children of: ${childTitle} (${childId})`);
             const descendants = await getAllDescendants(childId, token, log, depth + 1);
@@ -468,7 +525,7 @@ async function getAllDescendants(parentId, token, log, depth = 1) {
     return all;
 }
 
-function searchOLTask(query, token) {
+function searchOLTaskPage(query, token, start) {
     return new Promise((resolve, reject) => {
         const fields = [
             "CoreField.Title", "CoreField.Identifier", "SystemIdentifier",
@@ -485,7 +542,8 @@ function searchOLTask(query, token) {
             token: token,
             fields: fields,
             format: "JSON",
-            limit: 1000
+            limit: 100,
+            start: start
         });
 
         const url = `${API_URL}?${params.toString()}`;
@@ -509,6 +567,25 @@ function searchOLTask(query, token) {
             reject(new Error(`Request failed: ${e.message}`));
         });
     });
+}
+
+async function searchOLTask(query, token) {
+    const PAGE_SIZE = 100;
+    const MAX_PAGES = 20;
+    let all = [];
+    let start = 0;
+    for (let page = 0; page < MAX_PAGES; page++) {
+        const items = await searchOLTaskPage(query, token, start);
+        if (!items || items.length === 0) break;
+        // Detect if pagination is not working (same IDs as last page)
+        if (all.length > 0 && items[0]["CoreField.Identifier"] === all[all.length - items.length]["CoreField.Identifier"]) {
+            break; // API doesn't support start offset, stop to avoid duplicates
+        }
+        all.push(...items);
+        if (items.length < PAGE_SIZE) break; // last page
+        start += PAGE_SIZE;
+    }
+    return all;
 }
 
 function parseCSV(content) {

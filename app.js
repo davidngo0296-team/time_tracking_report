@@ -338,7 +338,7 @@ function refreshEnhancementSection(ticketId, btn) {
             const title = info.title;
 
             // Destroy existing chart instances for this section
-            ['chart-spent-', 'chart-left-', 'chart-left-blocked-'].forEach(prefix => {
+            ['chart-spent-', 'chart-left-', 'chart-left-blocked-', 'chart-estimate-'].forEach(prefix => {
                 const canvasId = `${prefix}${index}`;
                 if (chartInstances[canvasId]) {
                     chartInstances[canvasId].destroy();

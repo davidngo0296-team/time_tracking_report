@@ -12,11 +12,16 @@ function buildTreeData(rawData, enhancementTitle, globalMaxDate, filterValue) {
         row['Capture date'] === globalMaxDate
     );
 
-    // Apply QA/Non-QA filter
+    // Apply filter
     if (filterValue === 'qa') {
         tasks = tasks.filter(row => (row['Type'] || '').toLowerCase() === 'qa');
     } else if (filterValue === 'non-qa') {
         tasks = tasks.filter(row => (row['Type'] || '').toLowerCase() !== 'qa');
+    } else if (filterValue === 'non-qa-non-defect') {
+        tasks = tasks.filter(row => {
+            const t = (row['Type'] || '').toLowerCase();
+            return t !== 'qa' && !t.startsWith('defect');
+        });
     }
 
     // Build parentIds set for container detection
