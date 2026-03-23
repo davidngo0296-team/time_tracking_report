@@ -33,7 +33,7 @@ function buildTreeData(rawData, enhancementTitle, globalMaxDate, filterValue) {
 
     // Build task map and tree nodes, applying Gantt-like status filter
     const skipStatuses = ['obsolete', 'duplicate'];
-    const keepStatuses = ['needs peer review', 'pending approval', 'closed', 'implemented on dev', 'in progress', 'not started', 'approved, pending action'];
+    const keepStatuses = ['needs peer review', 'pending approval', 'closed', 'implemented on dev', 'completed', 'in progress', 'not started', 'approved, pending action'];
     const taskMap = {};
     const nodes = [];
 
@@ -49,7 +49,8 @@ function buildTreeData(rawData, enhancementTitle, globalMaxDate, filterValue) {
 
         // Skip criteria matching Gantt chart
         if (skipStatuses.includes(statusLower)) return;
-        if (timeLeftHours <= 0 && !keepStatuses.includes(statusLower) && !isContainer) return;
+        const isBlocked = statusLower.includes('blocked') || statusLower.includes('on hold');
+        if (timeLeftHours <= 0 && !keepStatuses.includes(statusLower) && !isBlocked && !isContainer) return;
 
         const timeSpentMin = parseFloat(row['Time spent'] || 0);
 
@@ -99,11 +100,28 @@ function buildTreeData(rawData, enhancementTitle, globalMaxDate, filterValue) {
     return { title: enhancementTitle, roots };
 }
 
+// --- Task Type Icons ---
+
+function getTypeIcon(type) {
+    const t = (type || '').toLowerCase();
+    if (t === 'development') return '\uD83D\uDCBB '; // 💻
+    if (t === 'qa') return '\uD83E\uDDEA '; // 🧪
+    if (t === 'configuration request') return '\u2699\uFE0F '; // ⚙️
+    if (t === 'question') return '\u2753 '; // ❓
+    if (t === 'infrastructure deployment') return '\uD83C\uDFD7\uFE0F '; // 🏗️
+    if (t === 'infrastructure project') return '\uD83D\uDCD0 '; // 📐
+    if (t === 'infrastructure configuration') return '\uD83D\uDD27 '; // 🔧
+    if (t === 'access change request') return '\uD83D\uDD11 '; // 🔑
+    if (t === 'research analysis') return '\uD83D\uDD0D '; // 🔍
+    if (t.startsWith('defect')) return '\uD83D\uDC1B '; // 🐛
+    return '';
+}
+
 // --- Status Colors (same as Gantt) ---
 
 function getTreeStatusColor(status) {
     const s = (status || '').toLowerCase();
-    if (s === 'closed' || s === 'implemented on dev') return '#c8e6c9';
+    if (s === 'closed' || s === 'implemented on dev' || s === 'completed' || s === 'approved, pending action') return '#c8e6c9';
     if (s.includes('blocked by customer')) return '#ffe0b2';
     if (s.includes('blocked') || s.includes('on hold')) return '#ffcdd2';
     if (s.includes('pending approval'))    return '#bbdefb';
@@ -114,7 +132,7 @@ function getTreeStatusColor(status) {
 
 function getTreeStatusClass(status) {
     const s = (status || '').toLowerCase();
-    if (s === 'closed' || s === 'implemented on dev') return 'completed';
+    if (s === 'closed' || s === 'implemented on dev' || s === 'completed' || s === 'approved, pending action') return 'completed';
     if (s.includes('blocked by customer')) return 'blocked-customer';
     if (s.includes('blocked') || s.includes('on hold')) return 'blocked';
     if (s.includes('pending approval'))    return 'pending-approval';
@@ -179,7 +197,7 @@ function renderTree(container, treeData) {
         <div class="legend-item"><span class="legend-color" style="background:#ffcdd2;"></span><span>Blocked by OL / On Hold</span></div>
         <div class="legend-item"><span class="legend-color" style="background:#ffe0b2;"></span><span>Blocked by Customer</span></div>
         <div class="legend-item"><span class="legend-color" style="background:#fff9c4;"></span><span>Needs Peer Review</span></div>
-        <div class="legend-item"><span class="legend-color" style="background:#c8e6c9;"></span><span>Closed / Implemented on Dev</span></div>
+        <div class="legend-item"><span class="legend-color" style="background:#c8e6c9;"></span><span>Closed / Implemented on Dev / Completed / Approved</span></div>
         <div class="legend-item"><span class="legend-color" style="background:#e0e0e0;"></span><span>Other Status</span></div>
     `;
     container.appendChild(legend);
@@ -227,7 +245,7 @@ function renderTreeNode(task, depth) {
     // Title
     const titleSpan = document.createElement('span');
     titleSpan.className = 'tree-node-title';
-    const icon = task.isContainer ? '\uD83D\uDCC1 ' : '';
+    const icon = task.isContainer ? '\uD83D\uDCC1 ' : getTypeIcon(task.type);
 
     if (task.link) {
         const a = document.createElement('a');

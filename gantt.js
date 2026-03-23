@@ -3,6 +3,23 @@
  * Handles Gantt data building, scheduling, and rendering
  */
 
+// --- Task Type Icons ---
+
+function getGanttTypeIcon(type) {
+    const t = (type || '').toLowerCase();
+    if (t === 'development') return '\uD83D\uDCBB '; // 💻
+    if (t === 'qa') return '\uD83E\uDDEA '; // 🧪
+    if (t === 'configuration request') return '\u2699\uFE0F '; // ⚙️
+    if (t === 'question') return '\u2753 '; // ❓
+    if (t === 'infrastructure deployment') return '\uD83C\uDFD7\uFE0F '; // 🏗️
+    if (t === 'infrastructure project') return '\uD83D\uDCD0 '; // 📐
+    if (t === 'infrastructure configuration') return '\uD83D\uDD27 '; // 🔧
+    if (t === 'access change request') return '\uD83D\uDD11 '; // 🔑
+    if (t === 'research analysis') return '\uD83D\uDD0D '; // 🔍
+    if (t.startsWith('defect')) return '\uD83D\uDC1B '; // 🐛
+    return '';
+}
+
 // Store for Gantt data per enhancement
 const ganttDataStore = {};
 let ganttChartInstance = null;
@@ -59,7 +76,8 @@ function buildGanttData(rawData, enhancementTitle, globalMaxDate, filterValue) {
         const skipStatuses = ['obsolete', 'duplicate', 'closed', 'implemented on dev'];
         const keepStatuses = ['needs peer review', 'pending approval', 'in progress', 'not started', 'approved, pending action'];
         const isContainer = parentIds.has(taskId);
-        if (skipStatuses.includes(status) || (timeLeftHours <= 0 && !keepStatuses.includes(status) && !isContainer)) {
+        const isBlocked = status.includes('blocked') || status.includes('on hold');
+        if (skipStatuses.includes(status) || (timeLeftHours <= 0 && !keepStatuses.includes(status) && !isBlocked && !isContainer)) {
             return;
         }
 
@@ -339,6 +357,8 @@ function renderGanttChart(container, ganttData) {
             } else if (status.includes('in progress') || status === 'in progress') {
                 bar.style.backgroundColor = '#bbdefb'; // Light blue for in progress
                 bar.classList.add('in-progress');
+            } else if (status === 'completed' || status === 'approved, pending action') {
+                bar.style.backgroundColor = '#c8e6c9'; // Green for completed / approved
             } else {
                 // Light grey for other statuses
                 bar.style.backgroundColor = '#e0e0e0';
@@ -352,11 +372,15 @@ function renderGanttChart(container, ganttData) {
                 `Estimated completion date: ${formatDateShort(task.endDate)}` +
                 (task.dependencies.length ? `\nPrerequisites: ${task.dependencies.join(', ')}` : '');
 
-            // Task label
+            // Task label — positioned in barSlot (not inside bar) so it's always visible
+            // even when bar.style.left is negative (task started before today)
             const taskLabel = document.createElement('span');
             taskLabel.className = 'gantt-bar-label';
-            taskLabel.textContent = (task.isContainer ? '\uD83D\uDCC1 ' : '') + truncateText(task.title, 35);
-            bar.appendChild(taskLabel);
+            taskLabel.textContent = (task.isContainer ? '\uD83D\uDCC1 ' : getGanttTypeIcon(task.type)) + (task.title || '');
+            const labelLeft = Math.max(startOffset * dayWidth + 8, 8);
+            const barRight = (startOffset + duration) * dayWidth - 4;
+            taskLabel.style.left = `${labelLeft}px`;
+            taskLabel.style.maxWidth = `${Math.max(barRight - labelLeft - 4, 30)}px`;
 
             // Click to open task link
             if (task.link) {
@@ -365,6 +389,7 @@ function renderGanttChart(container, ganttData) {
             }
 
             barSlot.appendChild(bar);
+            barSlot.appendChild(taskLabel);
             barsLayer.appendChild(barSlot);
             renderedTaskCount++; // Increment only when bar is actually rendered
         });
@@ -437,7 +462,7 @@ function renderGanttChart(container, ganttData) {
                 task.status.includes('in progress') ? 'in-progress' : '';
 
             const titleCell = document.createElement('td');
-            const displayTitle = (task.isContainer ? '\uD83D\uDCC1 ' : '') + task.title;
+            const displayTitle = (task.isContainer ? '\uD83D\uDCC1 ' : getGanttTypeIcon(task.type)) + task.title;
             if (task.link) {
                 const a = document.createElement('a');
                 a.href = task.link;

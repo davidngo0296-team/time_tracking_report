@@ -308,9 +308,12 @@ async function runUpdateLogic(token, ticketIdsStr) {
                 }
             });
             for (const cId of knownContainerIds) {
-                if (seenInAllTasks.has(cId)) continue; // container itself found — its children already included
-                // Skip only if ALL known children of this container are already in allTasks
-                // (if only some are present, the rest may have been cut off by the 100-item cap)
+                // Never re-query the enhancement root itself (already done in step 3)
+                if (cId === fullTicketId) continue;
+                // Skip only if ALL known children of this container are already in allTasks.
+                // NOTE: do NOT skip just because the container itself is in allTasks — finding the
+                // container does NOT mean all its children were returned (100-item cap applies to
+                // the entire descendant set, so a found container can still have missing children).
                 const knownChildren = trackingData.filter(row =>
                     row['Enhancement title'] === enhancementTitle &&
                     row['Parent Folder'] === cId &&
@@ -322,8 +325,9 @@ async function runUpdateLogic(token, ticketIdsStr) {
                 log(`    Supplementing from CSV-known container: ${cId}`);
                 const extra = await searchOLTask(`Parentfolderidentifier:("${cId}")`, token);
                 if (extra && extra.length > 0) {
-                    allTasks.push(...extra);
-                    extra.forEach(t => seenInAllTasks.add(t["CoreField.Identifier"]));
+                    const newItems = extra.filter(t => !seenInAllTasks.has(t["CoreField.Identifier"]));
+                    allTasks.push(...newItems);
+                    newItems.forEach(t => seenInAllTasks.add(t["CoreField.Identifier"]));
                 }
             }
         }

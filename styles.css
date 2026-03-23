@@ -706,9 +706,6 @@ h2 {
     top: 2px;
     height: 24px;
     border-radius: 4px;
-    display: flex;
-    align-items: center;
-    padding: 0 8px;
     box-sizing: border-box;
     transition: all 0.2s;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
@@ -737,13 +734,16 @@ h2 {
 }
 
 .gantt-bar-label {
+    position: absolute;
+    top: 5px;
     color: #333;
     font-size: 0.75em;
     font-weight: 600;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    text-shadow: none;
+    pointer-events: none;
+    z-index: 4;
 }
 
 /* Gantt Legend */
