@@ -74,7 +74,7 @@ function buildGanttData(rawData, enhancementTitle, globalMaxDate, filterValue) {
 
         // Skip closed/obsolete tasks, or tasks with no time left unless awaiting peer review or a container
         const skipStatuses = ['obsolete', 'duplicate', 'closed', 'implemented on dev'];
-        const keepStatuses = ['needs peer review', 'pending approval', 'in progress', 'not started', 'approved, pending action'];
+        const keepStatuses = ['needs peer review', 'pending approval', 'in progress', 'not started', 'ready to start', 'to be vetted', 'approved, pending action'];
         const isContainer = parentIds.has(taskId);
         const isBlocked = status.includes('blocked') || status.includes('on hold');
         if (skipStatuses.includes(status) || (timeLeftHours <= 0 && !keepStatuses.includes(status) && !isBlocked && !isContainer)) {
