@@ -33,7 +33,7 @@ function buildTreeData(rawData, enhancementTitle, globalMaxDate, filterValue) {
 
     // Build task map and tree nodes, applying Gantt-like status filter
     const skipStatuses = ['obsolete', 'duplicate'];
-    const keepStatuses = ['needs peer review', 'pending approval', 'closed', 'implemented on dev', 'completed', 'in progress', 'not started', 'ready to start', 'to be vetted', 'approved, pending action'];
+    const keepStatuses = ['needs peer review', 'pending approval', 'closed', 'implemented on dev', 'completed', 'in progress', 'not started', 'ready to start', 'to be vetted', 'approved, pending action', 'answered', 'access granted'];
     const taskMap = {};
     const nodes = [];
 
@@ -121,7 +121,7 @@ function getTypeIcon(type) {
 
 function getTreeStatusColor(status) {
     const s = (status || '').toLowerCase();
-    if (s === 'closed' || s === 'implemented on dev' || s === 'completed' || s === 'approved, pending action') return '#c8e6c9';
+    if (s === 'closed' || s === 'implemented on dev' || s === 'completed' || s === 'approved, pending action' || s === 'access granted' || s === 'answered') return '#c8e6c9';
     if (s.includes('blocked by customer')) return '#ffe0b2';
     if (s.includes('blocked') || s.includes('on hold')) return '#ffcdd2';
     if (s.includes('pending approval'))    return '#bbdefb';
@@ -132,7 +132,7 @@ function getTreeStatusColor(status) {
 
 function getTreeStatusClass(status) {
     const s = (status || '').toLowerCase();
-    if (s === 'closed' || s === 'implemented on dev' || s === 'completed' || s === 'approved, pending action') return 'completed';
+    if (s === 'closed' || s === 'implemented on dev' || s === 'completed' || s === 'approved, pending action' || s === 'access granted' || s === 'answered') return 'completed';
     if (s.includes('blocked by customer')) return 'blocked-customer';
     if (s.includes('blocked') || s.includes('on hold')) return 'blocked';
     if (s.includes('pending approval'))    return 'pending-approval';

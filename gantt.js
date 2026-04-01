@@ -74,7 +74,7 @@ function buildGanttData(rawData, enhancementTitle, globalMaxDate, filterValue) {
 
         // Skip closed/obsolete tasks, or tasks with no time left unless awaiting peer review or a container
         const skipStatuses = ['obsolete', 'duplicate', 'closed', 'implemented on dev'];
-        const keepStatuses = ['needs peer review', 'pending approval', 'in progress', 'not started', 'ready to start', 'to be vetted', 'approved, pending action'];
+        const keepStatuses = ['needs peer review', 'pending approval', 'in progress', 'not started', 'ready to start', 'to be vetted', 'approved, pending action', 'answered', 'access granted', 'completed'];
         const isContainer = parentIds.has(taskId);
         const isBlocked = status.includes('blocked') || status.includes('on hold');
         if (skipStatuses.includes(status) || (timeLeftHours <= 0 && !keepStatuses.includes(status) && !isBlocked && !isContainer)) {
@@ -108,13 +108,14 @@ function buildGanttData(rawData, enhancementTitle, globalMaxDate, filterValue) {
 
     // Separate tasks with ETA from tasks without
     // A task needs a real end date to appear on the calendar (estimatedEnd or eta as fallback)
+    const greenStatuses = ['completed', 'approved, pending action', 'access granted', 'answered'];
     const etaTasks = [];
     const noEtaTasks = [];
     ganttTasks.forEach(task => {
         const hasEndDate = task.estimatedEnd || task.eta;
         if (hasEndDate) {
             etaTasks.push(task);
-        } else {
+        } else if (!greenStatuses.includes(task.status)) {
             noEtaTasks.push(task);
         }
     });
@@ -357,8 +358,8 @@ function renderGanttChart(container, ganttData) {
             } else if (status.includes('in progress') || status === 'in progress') {
                 bar.style.backgroundColor = '#bbdefb'; // Light blue for in progress
                 bar.classList.add('in-progress');
-            } else if (status === 'completed' || status === 'approved, pending action') {
-                bar.style.backgroundColor = '#c8e6c9'; // Green for completed / approved
+            } else if (status === 'completed' || status === 'approved, pending action' || status === 'access granted' || status === 'answered') {
+                bar.style.backgroundColor = '#c8e6c9'; // Green for completed / approved / access granted / answered
             } else {
                 // Light grey for other statuses
                 bar.style.backgroundColor = '#e0e0e0';
@@ -459,7 +460,8 @@ function renderGanttChart(container, ganttData) {
             const tr = document.createElement('tr');
             const statusClass = task.isBlocked ? 'blocked' :
                 task.status.includes('peer review') ? 'peer-review' :
-                task.status.includes('in progress') ? 'in-progress' : '';
+                task.status.includes('in progress') ? 'in-progress' :
+                (task.status === 'completed' || task.status === 'access granted' || task.status === 'answered') ? 'completed' : '';
 
             const titleCell = document.createElement('td');
             const displayTitle = (task.isContainer ? '\uD83D\uDCC1 ' : getGanttTypeIcon(task.type)) + task.title;

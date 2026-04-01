@@ -8,6 +8,19 @@ let userToken = sessionStorage.getItem('ol_api_token') || '';
 let newlyAddedTickets = [];
 let hasRemovedTickets = false;
 
+// --- Reload Timestamps ---
+function formatReloadTime(ts) {
+    const d = new Date(ts);
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const h = String(d.getHours()).padStart(2, '0');
+    const m = String(d.getMinutes()).padStart(2, '0');
+    return `${d.getDate()} ${months[d.getMonth()]}, ${d.getFullYear()} at ${h}:${m}`;
+}
+
+function saveReloadTime(ticketId) {
+    localStorage.setItem(`lastReload_${ticketId}`, Date.now());
+}
+
 // --- Token Management ---
 function clearToken() {
     userToken = '';
@@ -244,6 +257,8 @@ function runUpdateData(ticketIds) {
                 }
                 throw new Error(result.error);
             }
+            const ids = Array.isArray(idsToUpdate) ? idsToUpdate : String(idsToUpdate).split(',');
+            ids.forEach(id => { if (id.trim()) saveReloadTime(id.trim()); });
             location.reload();
         })
         .catch(error => {
@@ -299,6 +314,7 @@ function reloadEnhancement(ticketId, btn) {
                 throw new Error(result.error);
             }
             // Re-fetch CSV and refresh only this enhancement section
+            saveReloadTime(ticketId);
             return refreshEnhancementSection(ticketId, btn);
         })
         .catch(error => {

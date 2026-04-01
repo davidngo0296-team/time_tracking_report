@@ -8,6 +8,15 @@ const chartStore = {};
 const chartInstances = {};
 let currentRiskyAssignees = new Set();
 
+// Resize all charts on window resize (covers browser zoom too)
+let _chartResizeTimer = null;
+window.addEventListener('resize', () => {
+    clearTimeout(_chartResizeTimer);
+    _chartResizeTimer = setTimeout(() => {
+        Object.values(chartInstances).forEach(chart => { if (chart) chart.resize(); });
+    }, 100);
+});
+
 /**
  * Check risk levels and highlight risky assignees
  */
@@ -353,10 +362,14 @@ function createChartSection(container, title, index, groupedData, rawData, globa
         ? `<a href="${enhancementUrl}" target="_blank" style="color: inherit; text-decoration: none;">${title}</a>`
         : title;
 
+    const savedTs = ticketId ? localStorage.getItem(`lastReload_${ticketId}`) : null;
+    const reloadText = savedTs ? `Last reloaded: ${formatReloadTime(parseInt(savedTs))}` : '';
+    const reloadSpan = ticketId ? `<span id="last-reload-span-${ticketId}" style="color: #95a5a6; font-size: 0.75em; font-weight: normal; margin-left: 12px;">${reloadText}</span>` : '';
+
     if (enhancementETA) {
-        header.innerHTML = `${importanceBadge}${ticketBadge}${statusBadge}${blockerWarning}${titleHtml} <span id="eta-span-${index}" style="color: #3498db; font-size: 0.8em; font-weight: normal;">(ETA ${enhancementETA})</span>`;
+        header.innerHTML = `${importanceBadge}${ticketBadge}${statusBadge}${blockerWarning}${titleHtml} <span id="eta-span-${index}" style="color: #3498db; font-size: 0.8em; font-weight: normal;">(ETA ${enhancementETA})</span>${reloadSpan}`;
     } else {
-        header.innerHTML = `${importanceBadge}${ticketBadge}${statusBadge}${blockerWarning}${titleHtml}`;
+        header.innerHTML = `${importanceBadge}${ticketBadge}${statusBadge}${blockerWarning}${titleHtml}${reloadSpan}`;
     }
     section.appendChild(header);
     const filterDiv = document.createElement('div');
@@ -693,7 +706,7 @@ function createNoETASection(rawData, globalMaxDate) {
     document.getElementById('no-eta-date-display').textContent = globalMaxDate;
 
     const allowedTypes = ['development', 'defect - qa vietnam', 'qa'];
-    const excludedStatuses = ['obsolete', 'implemented on dev', 'closed', 'duplicate', 'needs peer review', 'blocked by customer'];
+    const excludedStatuses = ['obsolete', 'implemented on dev', 'closed', 'duplicate', 'needs peer review', 'blocked by customer', 'completed', 'approved, pending action', 'access granted', 'answered'];
 
     // Build identifier → status map for latest date
     const taskStatusMap = {};
