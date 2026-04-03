@@ -151,18 +151,25 @@ function updatePlanningReview() {
 
     // Build per-task progressive data across all dates
     // Collect all unique canonical task keys and their best-known title
-    const taskMeta = {}; // canonicalKey → { title, assignee, status, firstSeen, lastSeen }
+    const taskMeta = {}; // canonicalKey → { title, baselineAssignee, currentAssignee, status, firstSeen, lastSeen }
     dateRange.forEach((date, di) => {
         const map = dateMaps[date];
         if (!map) return;
         Object.values(map).forEach(task => {
             const cKey = getCanonicalKey(task.id, task.title, keyRemap);
             if (!taskMeta[cKey]) {
-                taskMeta[cKey] = { title: task.title, assignee: task.assignee, status: task.status, firstSeen: di, lastSeen: di };
+                taskMeta[cKey] = {
+                    title: task.title,
+                    baselineAssignee: task.assignee,
+                    currentAssignee: task.assignee,
+                    assignee: task.assignee,
+                    status: task.status,
+                    firstSeen: di, lastSeen: di
+                };
             } else {
                 taskMeta[cKey].lastSeen = di;
-                // Prefer latest title/status/assignee
                 taskMeta[cKey].title = task.title;
+                taskMeta[cKey].currentAssignee = task.assignee;
                 taskMeta[cKey].assignee = task.assignee;
                 taskMeta[cKey].status = task.status;
             }
@@ -324,42 +331,91 @@ function renderPlanningReviewTable(dateRange, taskMeta, taskTimeline, existingKe
     const firstIdx = 0;
     const lastIdx = dateRange.length - 1;
 
-    // Group ALL tasks by assignee
+    // Group tasks by assignee with category breakdown
+    // Each task gets a "reason" for its delta: own-reest, received, given-away, new, removed
     const assigneeData = {};
     const allKeys = [...existingKeys, ...newKeys, ...removedKeys];
     const newKeySet = new Set(newKeys);
     const removedKeySet = new Set(removedKeys);
 
+    function ensureAssignee(name) {
+        if (!assigneeData[name]) {
+            assigneeData[name] = {
+                baselineTotal: 0, currentTotal: 0,
+                ownReEst: 0,   // delta from tasks they owned at baseline AND still own
+                received: 0,   // current total of tasks received from others
+                givenAway: 0,  // baseline total of tasks given to others
+                scopeNew: 0,   // current total of entirely new tasks
+                scopeRemoved: 0, // baseline total of removed tasks
+                tasks: []
+            };
+        }
+    }
+
     allKeys.forEach(key => {
         const meta = taskMeta[key];
-        const assignee = meta.assignee;
-        if (!assigneeData[assignee]) {
-            assigneeData[assignee] = { baselineTotal: 0, currentTotal: 0, tasks: [] };
-        }
-
         const isNew = newKeySet.has(key);
         const isRemoved = removedKeySet.has(key);
         const baseline = isNew ? 0 : (taskTimeline[key][firstIdx] || 0);
         const current = isRemoved ? 0 : (taskTimeline[key][lastIdx] || 0);
+        const sameOwner = meta.baselineAssignee === meta.currentAssignee;
 
-        assigneeData[assignee].baselineTotal += baseline;
-        assigneeData[assignee].currentTotal += current;
-        assigneeData[assignee].tasks.push({
-            title: meta.title,
-            baseline: baseline,
-            current: current,
-            delta: current - baseline,
-            isNew: isNew,
-            isRemoved: isRemoved,
-            status: meta.status
-        });
+        if (isNew) {
+            // New task: attribute to current assignee
+            const assignee = meta.currentAssignee;
+            ensureAssignee(assignee);
+            assigneeData[assignee].currentTotal += current;
+            assigneeData[assignee].scopeNew += current;
+            assigneeData[assignee].tasks.push({
+                title: meta.title, baseline, current, delta: current,
+                tag: 'NEW', tagColor: '#e67e22', status: meta.status
+            });
+        } else if (isRemoved) {
+            // Removed task: attribute to baseline assignee
+            const assignee = meta.baselineAssignee;
+            ensureAssignee(assignee);
+            assigneeData[assignee].baselineTotal += baseline;
+            assigneeData[assignee].scopeRemoved += baseline;
+            assigneeData[assignee].tasks.push({
+                title: meta.title, baseline, current: 0, delta: -baseline,
+                tag: 'REMOVED', tagColor: '#95a5a6', status: meta.status
+            });
+        } else if (sameOwner) {
+            // Same owner: own re-estimation
+            const assignee = meta.baselineAssignee;
+            ensureAssignee(assignee);
+            assigneeData[assignee].baselineTotal += baseline;
+            assigneeData[assignee].currentTotal += current;
+            assigneeData[assignee].ownReEst += (current - baseline);
+            assigneeData[assignee].tasks.push({
+                title: meta.title, baseline, current, delta: current - baseline,
+                tag: null, tagColor: null, status: meta.status
+            });
+        } else {
+            // Reassigned: show under BOTH assignees
+            // Baseline assignee: "given away"
+            ensureAssignee(meta.baselineAssignee);
+            assigneeData[meta.baselineAssignee].baselineTotal += baseline;
+            assigneeData[meta.baselineAssignee].givenAway += baseline;
+            assigneeData[meta.baselineAssignee].tasks.push({
+                title: meta.title, baseline, current: 0, delta: -baseline,
+                tag: `\u2192 ${meta.currentAssignee}`, tagColor: '#8e44ad', status: meta.status
+            });
+
+            // Current assignee: "received"
+            ensureAssignee(meta.currentAssignee);
+            assigneeData[meta.currentAssignee].currentTotal += current;
+            assigneeData[meta.currentAssignee].received += current;
+            assigneeData[meta.currentAssignee].tasks.push({
+                title: meta.title, baseline: 0, current, delta: current,
+                tag: `\u2190 ${meta.baselineAssignee}`, tagColor: '#2980b9', status: meta.status
+            });
+        }
     });
 
-    // Compute deltas and sort assignees by delta descending (worst first)
+    // Sort assignees by own re-estimation delta descending (worst planners first)
     const sortedAssignees = Object.keys(assigneeData).sort((a, b) => {
-        const dA = assigneeData[a].currentTotal - assigneeData[a].baselineTotal;
-        const dB = assigneeData[b].currentTotal - assigneeData[b].baselineTotal;
-        return dB - dA;
+        return assigneeData[b].ownReEst - assigneeData[a].ownReEst;
     });
 
     // Sort tasks within each assignee by |delta| descending
@@ -370,7 +426,7 @@ function renderPlanningReviewTable(dateRange, taskMeta, taskTimeline, existingKe
     // Build table
     let html = `<table class="planning-review-table">
         <thead><tr>
-            <th style="min-width:250px;"></th>
+            <th style="min-width:280px;"></th>
             <th>Baseline</th>
             <th>Current</th>
             <th>Delta</th>
@@ -381,33 +437,49 @@ function renderPlanningReviewTable(dateRange, taskMeta, taskTimeline, existingKe
 
     sortedAssignees.forEach(assignee => {
         const ad = assigneeData[assignee];
-        const delta = (ad.currentTotal - ad.baselineTotal) / 60;
-        const icon = delta > 0.05 ? '\u274C' : '\u2705';
+        // Delta excludes transfers: only own re-estimation + new scope - removed scope
+        const ownBaseline = ad.baselineTotal - ad.givenAway;
+        const ownCurrent = ad.currentTotal - ad.received;
+        const delta = (ownCurrent - ownBaseline) / 60;
+        const icon = ad.ownReEst > 3 ? '\u274C' : '\u2705';
         const aid = `pr-assignee-${rowId++}`;
 
+        // Build breakdown chips for the assignee row
+        const chips = [];
+        if (ad.ownReEst !== 0) {
+            const c = ad.ownReEst > 0 ? '#e74c3c' : '#27ae60';
+            chips.push(`<span style="color:${c};font-size:0.75em;" title="Own tasks re-estimation">${ad.ownReEst > 0 ? '+' : ''}${toH(ad.ownReEst)} re-est</span>`);
+        }
+        if (ad.scopeNew > 0) chips.push(`<span style="color:#e67e22;font-size:0.75em;" title="New tasks added">+${toH(ad.scopeNew)} new</span>`);
+        if (ad.scopeRemoved > 0) chips.push(`<span style="color:#95a5a6;font-size:0.75em;" title="Tasks removed">-${toH(ad.scopeRemoved)} removed</span>`);
+        if (ad.received > 0) chips.push(`<span style="color:#2980b9;font-size:0.75em;" title="Tasks received from others">${toH(ad.received)} received</span>`);
+        if (ad.givenAway > 0) chips.push(`<span style="color:#8e44ad;font-size:0.75em;" title="Tasks given to others">${toH(ad.givenAway)} given away</span>`);
+        const chipHtml = chips.length > 0 ? `<div style="margin-top:2px;">${chips.join(' &middot; ')}</div>` : '';
+
         html += `<tr class="pr-assignee-row" data-target="${aid}" onclick="togglePlanningReviewAssignee(this)">
-            <td><span class="pr-toggle">\u25B6</span> ${assignee} ${icon}</td>
-            <td>${toH(ad.baselineTotal)}</td>
-            <td>${toH(ad.currentTotal)}</td>
+            <td><span class="pr-toggle">\u25B6</span> ${assignee} ${icon}${chipHtml}</td>
+            <td>${toH(ownBaseline)}</td>
+            <td>${toH(ownCurrent)}</td>
             <td class="${deltaClass(delta)}">${deltaStr(delta)}</td>
         </tr>`;
 
         ad.tasks.forEach(t => {
             const tDelta = t.delta / 60;
-            const suffix = t.isNew ? ' <span style="color:#e67e22;font-size:0.8em;">(NEW)</span>' :
-                           t.isRemoved ? ' <span style="color:#95a5a6;font-size:0.8em;">(REMOVED)</span>' : '';
+            const tagHtml = t.tag ? ` <span style="color:${t.tagColor};font-size:0.8em;">(${t.tag})</span>` : '';
+            const blankBaseline = t.tag === 'NEW' || (t.tag && t.tag.startsWith('\u2190'));
+            const blankCurrent = t.tag === 'REMOVED' || (t.tag && t.tag.startsWith('\u2192'));
             html += `<tr class="pr-task-row ${aid}" style="display:none;">
-                <td title="${t.status}" style="padding-left:30px;">${t.title}${suffix}</td>
-                <td>${t.isNew ? '<span style="color:#ccc;">—</span>' : toH(t.baseline)}</td>
-                <td>${t.isRemoved ? '<span style="color:#ccc;">—</span>' : toH(t.current)}</td>
+                <td title="${t.status}" style="padding-left:30px;">${t.title}${tagHtml}</td>
+                <td>${blankBaseline ? '<span style="color:#ccc;">\u2014</span>' : toH(t.baseline)}</td>
+                <td>${blankCurrent ? '<span style="color:#ccc;">\u2014</span>' : toH(t.current)}</td>
                 <td class="${deltaClass(tDelta)}">${deltaStr(tDelta)}</td>
             </tr>`;
         });
     });
 
-    // Total row
-    const allBaseline = sortedAssignees.reduce((s, a) => s + assigneeData[a].baselineTotal, 0);
-    const allCurrent = sortedAssignees.reduce((s, a) => s + assigneeData[a].currentTotal, 0);
+    // Total row (excluding transfers to avoid double-counting)
+    const allBaseline = sortedAssignees.reduce((s, a) => s + assigneeData[a].baselineTotal - assigneeData[a].givenAway, 0);
+    const allCurrent = sortedAssignees.reduce((s, a) => s + assigneeData[a].currentTotal - assigneeData[a].received, 0);
     const totalDelta = (allCurrent - allBaseline) / 60;
     html += `<tr class="total-row">
         <td><strong>TOTAL</strong></td>
