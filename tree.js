@@ -39,7 +39,7 @@ function buildTreeData(rawData, enhancementTitle, globalMaxDate, filterValue) {
 
     tasks.forEach(row => {
         const id = (row['Task Identifier'] || '').trim();
-        if (!id) return;
+        if (!id || taskMap[id]) return; // skip empty or already-seen identifiers
 
         const status = (row['Status'] || '').trim();
         const statusLower = status.toLowerCase();
@@ -113,6 +113,7 @@ function getTypeIcon(type) {
     if (t === 'infrastructure configuration') return '\uD83D\uDD27 '; // 🔧
     if (t === 'access change request') return '\uD83D\uDD11 '; // 🔑
     if (t === 'research analysis') return '\uD83D\uDD0D '; // 🔍
+    if (t === 'merge request execution') return '\uD83D\uDD00 '; // 🔀
     if (t.startsWith('defect')) return '\uD83D\uDC1B '; // 🐛
     return '';
 }

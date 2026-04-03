@@ -16,6 +16,7 @@ function getGanttTypeIcon(type) {
     if (t === 'infrastructure configuration') return '\uD83D\uDD27 '; // 🔧
     if (t === 'access change request') return '\uD83D\uDD11 '; // 🔑
     if (t === 'research analysis') return '\uD83D\uDD0D '; // 🔍
+    if (t === 'merge request execution') return '\uD83D\uDD00 '; // 🔀
     if (t.startsWith('defect')) return '\uD83D\uDC1B '; // 🐛
     return '';
 }

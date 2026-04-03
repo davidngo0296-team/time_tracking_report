@@ -139,7 +139,7 @@ const server = http.createServer((req, res) => {
 
 // --- Logic ---
 
-const ALLOWED_TYPES = ["Development", "Configuration Request", "Defect - QA Vietnam", "Question", "QA", "Infrastructure Deployment", "Access Change Request", "Infrastructure Project", "Research Analysis", "Infrastructure Configuration"];
+const ALLOWED_TYPES = ["Development", "Configuration Request", "Defect - QA Vietnam", "Question", "QA", "Infrastructure Deployment", "Access Change Request", "Infrastructure Project", "Research Analysis", "Infrastructure Configuration", "Merge Request Execution"];
 const CONTAINER_TYPES = ["Development", "QA", "Infrastructure Deployment", "Access Change Request"];
 const NO_RECURSE_TYPES = ["Technical Debt Code"];
 const IGNORED_STATUSES = ["Obsolete", "Duplicate", "Closed", "Needs Peer Review", "Implemented on Dev", "In Revision", "Access granted", "Completed"];
@@ -291,8 +291,10 @@ async function runUpdateLogic(token, ticketIdsStr) {
         if (devTask) {
             const devId = devTask["CoreField.Identifier"];
             log(`    Found Development container: ${devId}`);
+            const existingIds = new Set(allTasks.map(t => t["CoreField.Identifier"]));
             const devDescendants = await getAllDescendants(devId, token, log);
-            allTasks.push(...devDescendants);
+            const newDevItems = devDescendants.filter(t => !existingIds.has(t["CoreField.Identifier"]));
+            allTasks.push(...newDevItems);
         }
 
         // 3.5. Supplement with known containers from CSV history that may have been cut off
@@ -346,9 +348,28 @@ async function runUpdateLogic(token, ticketIdsStr) {
                     )
                     .map(row => row['Task Identifier'])
             )];
+            // Build set of all identifiers ever seen in this enhancement's CSV history
+            const knownEnhancementIds = new Set();
+            trackingData.forEach(row => {
+                if (row['Enhancement title'] === enhancementTitle) {
+                    if (row['Task Identifier']) knownEnhancementIds.add(row['Task Identifier']);
+                    if (row['Parent Folder']) knownEnhancementIds.add(row['Parent Folder']);
+                }
+            });
+            knownEnhancementIds.add(fullTicketId);
+
             for (const tid of missingIds) {
                 const found = await searchOLTask(`SystemIdentifier:("${tid}")`, token);
                 if (found && found.length > 0) {
+                    // Verify the task still belongs to this enhancement.
+                    // Accept if: parent is the enhancement root, OR parent was fetched,
+                    // OR parent is known from CSV history (covers parents also cut off by API cap).
+                    // Only skip if the parent is completely unknown to this enhancement.
+                    const parentId = found[0]["ParentFolderIdentifier"] || "";
+                    if (parentId && parentId !== fullTicketId && !fetchedIds.has(parentId) && !knownEnhancementIds.has(parentId)) {
+                        log(`    Skipped ${tid} (parent ${parentId} not known in this enhancement)`);
+                        continue;
+                    }
                     allTasks.push(found[0]);
                     fetchedIds.add(tid);
                     log(`    Direct lookup found: ${tid}`);
