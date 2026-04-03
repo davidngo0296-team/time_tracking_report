@@ -125,6 +125,45 @@ function renderChart(canvasId, type) {
         };
     };
 
+    // Legend click: single-click = default toggle; double-click = solo/unsolo.
+    let _legendLastClick = 0;
+    let _legendLastIndex = -1;
+    let _legendClickTimer = null;
+    const legendClick = (e, legendItem, legend) => {
+        const now = Date.now();
+        const ci = legendItem.datasetIndex !== undefined ? legendItem.datasetIndex : legendItem.index;
+        const chart = legend.chart;
+
+        if (now - _legendLastClick < 350 && ci === _legendLastIndex) {
+            // Double-click: solo/unsolo
+            clearTimeout(_legendClickTimer);
+            const allItems = chart.legend.legendItems;
+            const allHidden = allItems.every((item, i) => {
+                const idx = item.datasetIndex !== undefined ? item.datasetIndex : item.index;
+                return idx === ci || item.hidden;
+            });
+            allItems.forEach(item => {
+                const idx = item.datasetIndex !== undefined ? item.datasetIndex : item.index;
+                chart.setDatasetVisibility(idx, allHidden ? true : idx === ci);
+            });
+            chart.update();
+            _legendLastClick = 0;
+        } else {
+            // Single click: defer default toggle to allow double-click detection
+            _legendLastClick = now;
+            _legendLastIndex = ci;
+            _legendClickTimer = setTimeout(() => {
+                // Default Chart.js toggle behavior
+                if (chart.config.type === 'pie' || chart.config.type === 'doughnut') {
+                    chart.toggleDataVisibility(ci);
+                } else {
+                    chart.setDatasetVisibility(ci, !chart.isDatasetVisible(ci));
+                }
+                chart.update();
+            }, 350);
+        }
+    };
+
     // Helper to wrap text
     const wrapText = (str, maxLength) => {
         const words = str.split(' ');
@@ -202,6 +241,7 @@ function renderChart(canvasId, type) {
                 plugins: {
                     legend: {
                         position: 'top',
+                        onClick: legendClick,
                         labels: {
                             color: legendColorCallback,
                             font: legendFontCallback
@@ -262,6 +302,7 @@ function renderChart(canvasId, type) {
                 plugins: {
                     legend: {
                         position: 'right',
+                        onClick: legendClick,
                         labels: {
                             color: legendColorCallback,
                             font: legendFontCallback
@@ -676,7 +717,7 @@ function createGlobalTimeLeftChart(groupedData, globalMaxDate, rawData) {
                 responsive: true,
                 maintainAspectRatio: false,
                 plugins: {
-                    legend: { position: 'right' },
+                    legend: { position: 'right', onClick: legendClick },
                     title: {
                         display: true,
                         text: `${teamName} (${totalHours.toFixed(1)} hrs / ${(totalHours / 6.5).toFixed(1)} days)`
