@@ -17,6 +17,42 @@ window.addEventListener('resize', () => {
     }, 100);
 });
 
+// Legend click: single-click = default toggle; double-click = solo/unsolo.
+let _legendLastClick = 0;
+let _legendLastIndex = -1;
+let _legendClickTimer = null;
+const legendClick = (e, legendItem, legend) => {
+    const now = Date.now();
+    const ci = legendItem.datasetIndex !== undefined ? legendItem.datasetIndex : legendItem.index;
+    const chart = legend.chart;
+
+    if (now - _legendLastClick < 350 && ci === _legendLastIndex) {
+        clearTimeout(_legendClickTimer);
+        const allItems = chart.legend.legendItems;
+        const allHidden = allItems.every((item, i) => {
+            const idx = item.datasetIndex !== undefined ? item.datasetIndex : item.index;
+            return idx === ci || item.hidden;
+        });
+        allItems.forEach(item => {
+            const idx = item.datasetIndex !== undefined ? item.datasetIndex : item.index;
+            chart.setDatasetVisibility(idx, allHidden ? true : idx === ci);
+        });
+        chart.update();
+        _legendLastClick = 0;
+    } else {
+        _legendLastClick = now;
+        _legendLastIndex = ci;
+        _legendClickTimer = setTimeout(() => {
+            if (chart.config.type === 'pie' || chart.config.type === 'doughnut') {
+                chart.toggleDataVisibility(ci);
+            } else {
+                chart.setDatasetVisibility(ci, !chart.isDatasetVisible(ci));
+            }
+            chart.update();
+        }, 350);
+    }
+};
+
 /**
  * Check risk levels and highlight risky assignees
  */
@@ -123,45 +159,6 @@ function renderChart(canvasId, type) {
         return {
             weight: (isTimeLeftChart && ctx.legendItem && currentRiskyAssignees.has(ctx.legendItem.text)) ? 'bold' : 'normal'
         };
-    };
-
-    // Legend click: single-click = default toggle; double-click = solo/unsolo.
-    let _legendLastClick = 0;
-    let _legendLastIndex = -1;
-    let _legendClickTimer = null;
-    const legendClick = (e, legendItem, legend) => {
-        const now = Date.now();
-        const ci = legendItem.datasetIndex !== undefined ? legendItem.datasetIndex : legendItem.index;
-        const chart = legend.chart;
-
-        if (now - _legendLastClick < 350 && ci === _legendLastIndex) {
-            // Double-click: solo/unsolo
-            clearTimeout(_legendClickTimer);
-            const allItems = chart.legend.legendItems;
-            const allHidden = allItems.every((item, i) => {
-                const idx = item.datasetIndex !== undefined ? item.datasetIndex : item.index;
-                return idx === ci || item.hidden;
-            });
-            allItems.forEach(item => {
-                const idx = item.datasetIndex !== undefined ? item.datasetIndex : item.index;
-                chart.setDatasetVisibility(idx, allHidden ? true : idx === ci);
-            });
-            chart.update();
-            _legendLastClick = 0;
-        } else {
-            // Single click: defer default toggle to allow double-click detection
-            _legendLastClick = now;
-            _legendLastIndex = ci;
-            _legendClickTimer = setTimeout(() => {
-                // Default Chart.js toggle behavior
-                if (chart.config.type === 'pie' || chart.config.type === 'doughnut') {
-                    chart.toggleDataVisibility(ci);
-                } else {
-                    chart.setDatasetVisibility(ci, !chart.isDatasetVisible(ci));
-                }
-                chart.update();
-            }, 350);
-        }
     };
 
     // Helper to wrap text
@@ -435,6 +432,9 @@ function createChartSection(container, title, index, groupedData, rawData, globa
         <button class="blockers-btn${hasBlockers ? ' has-blockers' : ''}" id="blockers-btn-${index}" onclick="openBlockersModal('${ticketId}', ${index})" title="Edit blockers">
             🚧 Blockers
         </button>` : ''}
+        <button class="planning-review-btn" onclick="openPlanningReviewModal(${index})" title="Planning Review">
+            📋 Planning Review
+        </button>
     `;
     section.appendChild(filterDiv);
 

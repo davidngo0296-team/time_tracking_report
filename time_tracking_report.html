@@ -157,11 +157,38 @@
         </div>
     </div>
 
+    <!-- Planning Review Modal -->
+    <div id="planning-review-modal" class="modal-overlay">
+        <div class="modal-content" style="max-width: 1200px; width: 95%;">
+            <div class="modal-header" id="planning-review-modal-title" style="color: #2980b9;">
+                Planning Review
+            </div>
+            <div class="modal-body" id="planning-review-body" style="white-space: normal;">
+                <div id="planning-review-controls" style="margin-bottom: 15px;">
+                    <label style="font-weight: 600; margin-right: 8px;">Baseline Date:</label>
+                    <select id="planning-review-date-select" onchange="updatePlanningReview()" style="padding: 4px 8px; border-radius: 4px; border: 1px solid #ccc;"></select>
+                    <span style="margin: 0 10px; color: #7f8c8d;">→</span>
+                    <label style="font-weight: 600; margin-right: 8px;">Current Date:</label>
+                    <span id="planning-review-current-date" style="font-weight: 600; color: #2c3e50;"></span>
+                </div>
+                <div id="planning-review-chart-container" style="height: 280px; margin-bottom: 20px;">
+                    <canvas id="planning-review-chart"></canvas>
+                </div>
+                <div id="planning-review-summary"></div>
+                <div id="planning-review-table-container" style="max-height: 50vh; overflow: auto;"></div>
+            </div>
+            <div class="modal-footer">
+                <button class="modal-btn" onclick="closePlanningReviewModal()" style="background: #3498db;">Close</button>
+            </div>
+        </div>
+    </div>
+
     <!-- JavaScript Files -->
     <script src="chart-utils.js"></script>
     <script src="chart-render.js"></script>
     <script src="gantt.js"></script>
     <script src="tree.js"></script>
+    <script src="planning-review.js"></script>
     <script src="app.js"></script>
 </body>
 

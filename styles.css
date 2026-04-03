@@ -1278,3 +1278,159 @@ h2 {
     opacity: 0.6;
     cursor: default;
 }
+
+/* ======================================== */
+/* PLANNING REVIEW STYLES                   */
+/* ======================================== */
+
+.planning-review-btn {
+    background: linear-gradient(135deg, #3498db, #2980b9);
+    color: white;
+    border: none;
+    padding: 6px 14px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9em;
+    font-weight: 500;
+    margin-left: 8px;
+    transition: all 0.2s;
+}
+
+.planning-review-btn:hover {
+    background: linear-gradient(135deg, #2980b9, #1a6da0);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(52, 152, 219, 0.4);
+}
+
+#planning-review-modal .modal-content {
+    border-left: 5px solid #3498db;
+}
+
+#planning-review-modal .modal-body {
+    overflow-y: auto;
+    max-height: 75vh;
+}
+
+.planning-review-summary {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 15px;
+    flex-wrap: wrap;
+}
+
+.planning-review-summary-card {
+    flex: 1;
+    min-width: 120px;
+    padding: 10px;
+    border-radius: 6px;
+    text-align: center;
+    font-weight: 600;
+    font-size: 0.9em;
+}
+
+.planning-review-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85em;
+}
+
+.planning-review-table th {
+    background: #f8f9fa;
+    padding: 8px 10px;
+    text-align: right;
+    font-weight: 600;
+    color: #555;
+    border-bottom: 2px solid #ddd;
+    position: sticky;
+    top: 0;
+    z-index: 1;
+}
+
+.planning-review-table th:first-child {
+    text-align: left;
+}
+
+.planning-review-table td {
+    padding: 6px 10px;
+    border-bottom: 1px solid #f0f0f0;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+.planning-review-table td:first-child {
+    text-align: left;
+    max-width: 300px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    position: sticky;
+    left: 0;
+    background: white;
+    z-index: 1;
+}
+
+.planning-review-table th:first-child {
+    position: sticky;
+    left: 0;
+    z-index: 2;
+}
+
+.planning-review-section-header td {
+    position: sticky;
+    left: 0;
+}
+
+.planning-review-table .total-row td:first-child {
+    background: #f8f9fa;
+}
+
+.planning-review-section-header td {
+    background: #eef2f7;
+    font-weight: 700;
+    color: #2c3e50;
+    padding: 10px;
+    border-bottom: 2px solid #ccc;
+    text-align: left !important;
+}
+
+.planning-review-table .delta-positive {
+    color: #e74c3c;
+    font-weight: 600;
+}
+
+.planning-review-table .delta-negative {
+    color: #27ae60;
+    font-weight: 600;
+}
+
+.planning-review-table .delta-zero {
+    color: #7f8c8d;
+}
+
+.planning-review-table .total-row td {
+    font-weight: 700;
+    border-top: 2px solid #333;
+    background: #f8f9fa;
+}
+
+.pr-assignee-row {
+    cursor: pointer;
+    font-weight: 600;
+    background: #f8f9fa;
+}
+
+.pr-assignee-row:hover {
+    background: #eef2f7;
+}
+
+.pr-toggle {
+    display: inline-block;
+    width: 16px;
+    font-size: 0.75em;
+    color: #7f8c8d;
+}
+
+.pr-task-row td {
+    font-weight: 400;
+    color: #555;
+}
