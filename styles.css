@@ -1302,6 +1302,99 @@ h2 {
     box-shadow: 0 2px 8px rgba(52, 152, 219, 0.4);
 }
 
+/* Test Case & View Design URL buttons */
+.url-btn-group {
+    display: inline-flex;
+    align-items: center;
+    position: relative;
+    margin-left: 8px;
+}
+
+.testcase-btn {
+    background: linear-gradient(135deg, #f39c12, #e67e22);
+    color: white;
+    border: none;
+    padding: 6px 14px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9em;
+    font-weight: 500;
+    transition: all 0.2s;
+    opacity: 0.65;
+}
+.testcase-btn.has-url { opacity: 1; }
+.testcase-btn:hover {
+    background: linear-gradient(135deg, #e67e22, #d35400);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(243, 156, 18, 0.4);
+}
+
+.design-btn {
+    background: linear-gradient(135deg, #e91e63, #c2185b);
+    color: white;
+    border: none;
+    padding: 6px 14px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9em;
+    font-weight: 500;
+    transition: all 0.2s;
+    opacity: 0.65;
+}
+.design-btn.has-url { opacity: 1; }
+.design-btn:hover {
+    background: linear-gradient(135deg, #c2185b, #ad1457);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(233, 30, 99, 0.4);
+}
+
+.url-edit-icon {
+    cursor: pointer;
+    font-size: 0.7em;
+    opacity: 0.4;
+    margin-left: 2px;
+    transition: opacity 0.2s;
+}
+.url-edit-icon:hover { opacity: 1; }
+
+.url-popover {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    z-index: 100;
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    padding: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    display: flex;
+    gap: 6px;
+    min-width: 400px;
+    margin-top: 4px;
+}
+.url-popover input {
+    flex: 1;
+    padding: 6px 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 0.9em;
+}
+.url-popover input:focus {
+    outline: none;
+    border-color: #3498db;
+}
+.url-popover button {
+    padding: 6px 14px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    color: white;
+    background: #3498db;
+    font-size: 0.85em;
+    font-weight: 500;
+}
+.url-popover button:hover { background: #2980b9; }
+
 #planning-review-modal .modal-content {
     border-left: 5px solid #3498db;
 }

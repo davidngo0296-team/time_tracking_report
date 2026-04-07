@@ -21,6 +21,65 @@ function saveReloadTime(ticketId) {
     localStorage.setItem(`lastReload_${ticketId}`, Date.now());
 }
 
+// --- URL Bookmark Buttons (Test Case, View Design) ---
+function openUrlButton(ticketId, field, btn) {
+    const meta = window.enhancementMeta || {};
+    const url = (meta[ticketId] && meta[ticketId][field]) || '';
+    if (url) {
+        window.open(url, '_blank');
+    } else {
+        showUrlPopover(ticketId, field, btn);
+    }
+}
+
+function showUrlPopover(ticketId, field, btn) {
+    closeUrlPopover();
+    const meta = window.enhancementMeta || {};
+    const currentUrl = (meta[ticketId] && meta[ticketId][field]) || '';
+
+    const popover = document.createElement('div');
+    popover.className = 'url-popover';
+    popover.id = 'active-url-popover';
+    popover.innerHTML = `
+        <input type="text" id="url-popover-input" value="${currentUrl}" placeholder="Paste URL here...">
+        <button onclick="saveUrlField('${ticketId}', '${field}')">Save</button>
+        <button onclick="closeUrlPopover()" style="background:#95a5a6;">Cancel</button>
+    `;
+    btn.insertAdjacentElement('afterend', popover);
+    const input = popover.querySelector('input');
+    input.focus();
+    input.addEventListener('keydown', e => {
+        if (e.key === 'Enter') saveUrlField(ticketId, field);
+        if (e.key === 'Escape') closeUrlPopover();
+    });
+}
+
+function closeUrlPopover() {
+    const existing = document.getElementById('active-url-popover');
+    if (existing) existing.remove();
+}
+
+function saveUrlField(ticketId, field) {
+    const input = document.getElementById('url-popover-input');
+    const value = input ? input.value.trim() : '';
+    fetch('/enhancement-meta', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ticketId, field, value })
+    }).then(r => r.json()).then(() => {
+        if (!window.enhancementMeta) window.enhancementMeta = {};
+        if (!window.enhancementMeta[ticketId]) window.enhancementMeta[ticketId] = {};
+        window.enhancementMeta[ticketId][field] = value;
+        const btnId = field === 'testCaseUrl' ? `testcase-btn-${ticketId}` : `design-btn-${ticketId}`;
+        const btn = document.getElementById(btnId);
+        if (btn) {
+            if (value) btn.classList.add('has-url');
+            else btn.classList.remove('has-url');
+        }
+        closeUrlPopover();
+    });
+}
+
 // --- Token Management ---
 function clearToken() {
     userToken = '';

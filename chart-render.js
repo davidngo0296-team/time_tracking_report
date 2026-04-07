@@ -391,6 +391,8 @@ function createChartSection(container, title, index, groupedData, rawData, globa
 
     const meta = window.enhancementMeta || {};
     const hasBlockers = ticketId && meta[ticketId] && (meta[ticketId].blockers || '').trim().length > 0;
+    const hasTestCase = ticketId && meta[ticketId] && (meta[ticketId].testCaseUrl || '').trim().length > 0;
+    const hasDesign = ticketId && meta[ticketId] && (meta[ticketId].figmaUrl || '').trim().length > 0;
 
     let blockerWarning = hasBlockers
         ? `<span title="Has blockers" style="color: #e67e22; font-size: 0.85em; margin-right: 6px;">⚠️</span>`
@@ -420,18 +422,28 @@ function createChartSection(container, title, index, groupedData, rawData, globa
             <option value="non-qa">Non-QA Tasks</option>
             <option value="non-qa-non-defect" selected>Non-QA Non-Defect Tasks</option>
         </select>
+        ${ticketId ? `<button class="reload-btn" id="reload-btn-${ticketId}" onclick="reloadEnhancement('${ticketId}', this)" title="Reload data for this enhancement">
+            🔄 Reload
+        </button>` : ''}
         <button class="gantt-btn" onclick="openGanttModal(${index})" title="View Gantt Chart">
             📊 Gantt Chart
         </button>
         <button class="tree-btn" onclick="openTreeModal(${index})" title="View Task Tree">
             🌳 Task Tree
         </button>
-        ${ticketId ? `<button class="reload-btn" id="reload-btn-${ticketId}" onclick="reloadEnhancement('${ticketId}', this)" title="Reload data for this enhancement">
-            🔄 Reload
-        </button>
-        <button class="blockers-btn${hasBlockers ? ' has-blockers' : ''}" id="blockers-btn-${index}" onclick="openBlockersModal('${ticketId}', ${index})" title="Edit blockers">
+        ${ticketId ? `<button class="blockers-btn${hasBlockers ? ' has-blockers' : ''}" id="blockers-btn-${index}" onclick="openBlockersModal('${ticketId}', ${index})" title="Edit blockers">
             🚧 Blockers
-        </button>` : ''}
+        </button>
+        <span class="url-btn-group">
+            <button class="testcase-btn${hasTestCase ? ' has-url' : ''}" id="testcase-btn-${ticketId}" onclick="openUrlButton('${ticketId}', 'testCaseUrl', this)" title="Test case document">
+                🧪 Test case
+            </button><span class="url-edit-icon" onclick="event.stopPropagation(); showUrlPopover('${ticketId}', 'testCaseUrl', this.previousElementSibling)" title="Edit URL">✏️</span>
+        </span>
+        <span class="url-btn-group">
+            <button class="design-btn${hasDesign ? ' has-url' : ''}" id="design-btn-${ticketId}" onclick="openUrlButton('${ticketId}', 'figmaUrl', this)" title="View design (Figma)">
+                🎨 View design
+            </button><span class="url-edit-icon" onclick="event.stopPropagation(); showUrlPopover('${ticketId}', 'figmaUrl', this.previousElementSibling)" title="Edit URL">✏️</span>
+        </span>` : ''}
         <button class="planning-review-btn" onclick="openPlanningReviewModal(${index})" title="Planning Review">
             📋 Planning Review
         </button>
