@@ -204,6 +204,20 @@ function renderTree(container, treeData) {
     container.appendChild(legend);
 }
 
+function isGreenStatus(status) {
+    const s = (status || '').toLowerCase();
+    return s === 'closed' || s === 'implemented on dev' || s === 'completed' || s === 'approved, pending action' || s === 'access granted' || s === 'answered';
+}
+
+function hasNonGreenDescendant(task) {
+    if (!task.children) return false;
+    for (const child of task.children) {
+        if (!isGreenStatus(child.status)) return true;
+        if (hasNonGreenDescendant(child)) return true;
+    }
+    return false;
+}
+
 function renderTreeNode(task, depth) {
     const node = document.createElement('div');
     node.className = 'tree-node';
@@ -242,6 +256,16 @@ function renderTreeNode(task, depth) {
         toggle.textContent = '\u2022'; // bullet
     }
     header.appendChild(toggle);
+
+    // Warning: green parent with non-green descendants
+    const needsWarning = hasChildren && isGreenStatus(task.status) && hasNonGreenDescendant(task);
+    if (needsWarning) {
+        const warn = document.createElement('span');
+        warn.className = 'tree-status-warning';
+        warn.textContent = '\u26A0\uFE0F';
+        warn.title = 'Marked as done but has active/incomplete children';
+        header.appendChild(warn);
+    }
 
     // Title
     const titleSpan = document.createElement('span');

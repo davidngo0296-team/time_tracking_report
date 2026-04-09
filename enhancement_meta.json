@@ -6,7 +6,7 @@
     "blockers": ""
   },
   "29AFC7": {
-    "blockers": "Retro items:\n- Lack of planning for migration\n- ",
+    "blockers": "Retro items:\n- Lack of planning for migration\n- Growing estimation for UI task",
     "testCaseUrl": "https://docs.google.com/spreadsheets/d/1TfdF2pLDhnc--y7F4ohdJOkMCWtMvIUaAsH0NfrqW_A/edit?gid=149281191#gid=149281191"
   },
   "41X6FO": {
@@ -14,5 +14,8 @@
   },
   "41XBES": {
     "testCaseUrl": "https://docs.google.com/spreadsheets/d/17pUtL2lxbftSPOaP40RrmXbVrNtDX2SxxsDVT4_Bk1Q/edit?gid=149281191#gid=149281191"
+  },
+  "290W0B": {
+    "testCaseUrl": "https://docs.google.com/spreadsheets/d/1wdcf-eMEFC-6NxNO_FE9ONKTnpq8yY9tiNcyahiGNCc/edit?gid=149281191#gid=149281191"
   }
 }

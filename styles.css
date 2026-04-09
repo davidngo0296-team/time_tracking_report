@@ -1064,6 +1064,12 @@ h2 {
     text-decoration: underline;
 }
 
+.tree-status-warning {
+    font-size: 0.85em;
+    margin-right: 4px;
+    cursor: help;
+}
+
 .tree-status-badge {
     font-size: 0.75em;
     padding: 2px 8px;

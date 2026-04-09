@@ -122,15 +122,33 @@ function updatePlanningReview() {
     const enhTitle = info.title;
     const rawData = window.rawParsedData || [];
 
+    // Read the active filter from the enhancement's dropdown
+    const filterSelect = document.getElementById(`filter-${currentPlanningReviewIndex}`);
+    const filterValue = filterSelect ? filterSelect.value : 'all';
+
+    function applyTypeFilter(rows) {
+        if (filterValue === 'qa') {
+            return rows.filter(r => (r['Type'] || '').toLowerCase() === 'qa');
+        } else if (filterValue === 'non-qa') {
+            return rows.filter(r => (r['Type'] || '').toLowerCase() !== 'qa');
+        } else if (filterValue === 'non-qa-non-defect') {
+            return rows.filter(r => {
+                const t = (r['Type'] || '').toLowerCase();
+                return t !== 'qa' && !t.startsWith('defect');
+            });
+        }
+        return rows;
+    }
+
     // Get dates from baseline to current (inclusive)
     const baseIdx = allDates.indexOf(baselineDate);
     const dateRange = allDates.slice(baseIdx);
 
-    // Build task maps for each date in range
+    // Build task maps for each date in range, applying the active filter
     const dateMaps = {};
     dateRange.forEach(date => {
         const rows = rawData.filter(r => r['Enhancement title'] === enhTitle && r['Capture date'] === date);
-        dateMaps[date] = buildPlanningTaskMap(rows);
+        dateMaps[date] = buildPlanningTaskMap(applyTypeFilter(rows));
     });
 
     // Build unified key index for cross-matching title-keyed ↔ identifier-keyed entries

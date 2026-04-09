@@ -218,10 +218,13 @@ async function runUpdateLogic(token, ticketIdsStr) {
         trackingData.forEach(row => row['Parent Folder'] = '');
     }
 
-    // Index for fast lookup
+    // Index for fast lookup — prefer Task Identifier as key (handles renames)
     const dataIndex = {};
     trackingData.forEach((row, i) => {
-        const key = `${row['Capture date']}|${row['Enhancement title']}|${row['Task title']}|${row['Task Identifier'] || ''}`;
+        const tid = (row['Task Identifier'] || '').trim();
+        const key = tid
+            ? `${row['Capture date']}|${row['Enhancement title']}|${tid}`
+            : `${row['Capture date']}|${row['Enhancement title']}|${row['Task title']}`;
         dataIndex[key] = i;
     });
 
@@ -444,7 +447,9 @@ async function runUpdateLogic(token, ticketIdsStr) {
             }
 
             seenIdentifiers.add(taskIdentifier);
-            const rowKey = `${captureDate}|${enhancementTitle}|${taskTitle}|${taskIdentifier}`;
+            const rowKey = taskIdentifier
+                ? `${captureDate}|${enhancementTitle}|${taskIdentifier}`
+                : `${captureDate}|${enhancementTitle}|${taskTitle}`;
 
             const newRow = {
                 'Capture date': captureDate,
