@@ -33,7 +33,7 @@ function buildTreeData(rawData, enhancementTitle, globalMaxDate, filterValue) {
 
     // Build task map and tree nodes, applying Gantt-like status filter
     const skipStatuses = ['obsolete', 'duplicate'];
-    const keepStatuses = ['needs peer review', 'pending approval', 'closed', 'implemented on dev', 'completed', 'in progress', 'not started', 'ready to start', 'to be vetted', 'approved, pending action', 'answered', 'access granted'];
+    const keepStatuses = ['needs peer review', 'pending approval', 'closed', 'implemented on dev', 'completed', 'in progress', 'not started', 'ready to start', 'to be vetted', 'approved, pending action', 'answered', 'access granted', 'in revision'];
     const taskMap = {};
     const nodes = [];
 
@@ -114,7 +114,8 @@ function getTypeIcon(type) {
     if (t === 'access change request') return '\uD83D\uDD11 '; // 🔑
     if (t === 'research analysis') return '\uD83D\uDD0D '; // 🔍
     if (t === 'merge request execution') return '\uD83D\uDD00 '; // 🔀
-    if (t.startsWith('defect')) return '\uD83D\uDC1B '; // 🐛
+    if (t === 'defect - application') return '\uD83D\uDC1B '; // 🐛
+    if (t.startsWith('defect')) return '\uD83D\uDC1E '; // 🐞 (Defect - QA Vietnam and others)
     return '';
 }
 
@@ -125,8 +126,8 @@ function getTreeStatusColor(status) {
     if (s === 'closed' || s === 'implemented on dev' || s === 'completed' || s === 'approved, pending action' || s === 'access granted' || s === 'answered') return '#c8e6c9';
     if (s.includes('blocked by customer')) return '#ffe0b2';
     if (s.includes('blocked') || s.includes('on hold')) return '#ffcdd2';
-    if (s.includes('pending approval'))    return '#bbdefb';
-    if (s.includes('peer review'))         return '#fff9c4';
+    if (s.includes('pending approval') || s === 'reopened') return '#bbdefb';
+    if (s.includes('peer review') || s.includes('in revision')) return '#fff9c4';
     if (s.includes('in progress'))         return '#bbdefb';
     return '#e0e0e0';
 }
@@ -136,8 +137,8 @@ function getTreeStatusClass(status) {
     if (s === 'closed' || s === 'implemented on dev' || s === 'completed' || s === 'approved, pending action' || s === 'access granted' || s === 'answered') return 'completed';
     if (s.includes('blocked by customer')) return 'blocked-customer';
     if (s.includes('blocked') || s.includes('on hold')) return 'blocked';
-    if (s.includes('pending approval'))    return 'pending-approval';
-    if (s.includes('peer review'))         return 'peer-review';
+    if (s.includes('pending approval') || s === 'reopened') return 'pending-approval';
+    if (s.includes('peer review') || s.includes('in revision')) return 'peer-review';
     if (s.includes('in progress'))         return 'in-progress';
     return '';
 }

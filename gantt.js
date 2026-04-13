@@ -17,7 +17,8 @@ function getGanttTypeIcon(type) {
     if (t === 'access change request') return '\uD83D\uDD11 '; // 🔑
     if (t === 'research analysis') return '\uD83D\uDD0D '; // 🔍
     if (t === 'merge request execution') return '\uD83D\uDD00 '; // 🔀
-    if (t.startsWith('defect')) return '\uD83D\uDC1B '; // 🐛
+    if (t === 'defect - application') return '\uD83D\uDC1B '; // 🐛
+    if (t.startsWith('defect')) return '\uD83D\uDC1E '; // 🐞 (Defect - QA Vietnam and others)
     return '';
 }
 
@@ -75,7 +76,7 @@ function buildGanttData(rawData, enhancementTitle, globalMaxDate, filterValue) {
 
         // Skip closed/obsolete tasks, or tasks with no time left unless awaiting peer review or a container
         const skipStatuses = ['obsolete', 'duplicate', 'closed', 'implemented on dev'];
-        const keepStatuses = ['needs peer review', 'pending approval', 'in progress', 'not started', 'ready to start', 'to be vetted', 'approved, pending action', 'answered', 'access granted', 'completed'];
+        const keepStatuses = ['needs peer review', 'pending approval', 'in progress', 'not started', 'ready to start', 'to be vetted', 'approved, pending action', 'answered', 'access granted', 'completed', 'in revision'];
         const isContainer = parentIds.has(taskId);
         const isBlocked = status.includes('blocked') || status.includes('on hold');
         if (skipStatuses.includes(status) || (timeLeftHours <= 0 && !keepStatuses.includes(status) && !isBlocked && !isContainer)) {
@@ -350,11 +351,11 @@ function renderGanttChart(container, ganttData) {
             } else if (status.includes('blocked') || status.includes('on hold')) {
                 bar.style.backgroundColor = '#ffcdd2'; // Light red for blocked / on hold
                 bar.classList.add('blocked');
-            } else if (status.includes('pending approval')) {
-                bar.style.backgroundColor = '#bbdefb'; // Blue for pending approval
+            } else if (status.includes('pending approval') || status === 'reopened') {
+                bar.style.backgroundColor = '#bbdefb'; // Blue for pending approval / reopened
                 bar.classList.add('pending-approval');
-            } else if (status.includes('peer review') || status === 'needs peer review') {
-                bar.style.backgroundColor = '#fff9c4'; // Light yellow for peer review
+            } else if (status.includes('peer review') || status === 'needs peer review' || status.includes('in revision')) {
+                bar.style.backgroundColor = '#fff9c4'; // Light yellow for peer review / in revision
                 bar.classList.add('peer-review');
             } else if (status.includes('in progress') || status === 'in progress') {
                 bar.style.backgroundColor = '#bbdefb'; // Light blue for in progress

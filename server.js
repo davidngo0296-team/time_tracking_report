@@ -141,7 +141,7 @@ const server = http.createServer((req, res) => {
 
 // --- Logic ---
 
-const ALLOWED_TYPES = ["Development", "Configuration Request", "Defect - QA Vietnam", "Question", "QA", "Infrastructure Deployment", "Access Change Request", "Infrastructure Project", "Research Analysis", "Infrastructure Configuration", "Merge Request Execution"];
+const ALLOWED_TYPES = ["Development", "Configuration Request", "Defect - QA Vietnam", "Defect - Application", "Question", "QA", "Infrastructure Deployment", "Access Change Request", "Infrastructure Project", "Research Analysis", "Infrastructure Configuration", "Merge Request Execution"];
 const CONTAINER_TYPES = ["Development", "QA", "Infrastructure Deployment", "Access Change Request"];
 const NO_RECURSE_TYPES = ["Technical Debt Code"];
 const IGNORED_STATUSES = ["Obsolete", "Duplicate", "Closed", "Needs Peer Review", "Implemented on Dev", "In Revision", "Access granted", "Completed"];
@@ -291,15 +291,18 @@ async function runUpdateLogic(token, ticketIdsStr) {
 
         let allTasks = [...directChildren];
 
-        // 3. Find 'Development' folder and recursively get all descendants
-        const devTask = directChildren.find(t => t["CoreField.Title"] === "Development");
-        if (devTask) {
-            const devId = devTask["CoreField.Identifier"];
-            log(`    Found Development container: ${devId}`);
+        // 3. Recursively get all descendants from each top-level container found in direct children
+        const topLevelContainers = directChildren.filter(t =>
+            CONTAINER_TYPES.includes((t["CoreField.DocSubType"] || '').trim())
+        );
+        for (const container of topLevelContainers) {
+            const containerId = container["CoreField.Identifier"];
+            const containerTitle = container["CoreField.Title"];
+            log(`    Found container: ${containerTitle} (${containerId})`);
             const existingIds = new Set(allTasks.map(t => t["CoreField.Identifier"]));
-            const devDescendants = await getAllDescendants(devId, token, log);
-            const newDevItems = devDescendants.filter(t => !existingIds.has(t["CoreField.Identifier"]));
-            allTasks.push(...newDevItems);
+            const descendants = await getAllDescendants(containerId, token, log);
+            const newItems = descendants.filter(t => !existingIds.has(t["CoreField.Identifier"]));
+            allTasks.push(...newItems);
         }
 
         // 3.5. Supplement with known containers from CSV history that may have been cut off
