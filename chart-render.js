@@ -393,9 +393,14 @@ function createChartSection(container, title, index, groupedData, rawData, globa
     const hasBlockers = ticketId && meta[ticketId] && (meta[ticketId].blockers || '').trim().length > 0;
     const hasTestCase = ticketId && meta[ticketId] && (meta[ticketId].testCaseUrl || '').trim().length > 0;
     const hasDesign = ticketId && meta[ticketId] && (meta[ticketId].figmaUrl || '').trim().length > 0;
+    const riskStatuses = ticketId && meta[ticketId] && meta[ticketId].riskStatuses ? meta[ticketId].riskStatuses : {};
+    const hasRiskyItems = Object.values(riskStatuses).some(s => s === 'risky');
 
     let blockerWarning = hasBlockers
         ? `<span title="Has blockers" style="color: #e67e22; font-size: 0.85em; margin-right: 6px;">⚠️</span>`
+        : '';
+    let riskWarning = hasRiskyItems
+        ? `<span class="risk-warning-indicator" title="Has risky items" style="color: #e74c3c; font-size: 0.85em; margin-right: 6px;">&#x1F534;</span>`
         : '';
 
     let titleHtml = enhancementUrl
@@ -407,9 +412,9 @@ function createChartSection(container, title, index, groupedData, rawData, globa
     const reloadSpan = ticketId ? `<span id="last-reload-span-${ticketId}" style="color: #95a5a6; font-size: 0.75em; font-weight: normal; margin-left: 12px;">${reloadText}</span>` : '';
 
     if (enhancementETA) {
-        header.innerHTML = `${importanceBadge}${ticketBadge}${statusBadge}${blockerWarning}${titleHtml} <span id="eta-span-${index}" style="color: #3498db; font-size: 0.8em; font-weight: normal;">(ETA ${enhancementETA})</span>${reloadSpan}`;
+        header.innerHTML = `${importanceBadge}${ticketBadge}${statusBadge}${blockerWarning}${riskWarning}${titleHtml} <span id="eta-span-${index}" style="color: #3498db; font-size: 0.8em; font-weight: normal;">(ETA ${enhancementETA})</span>${reloadSpan}`;
     } else {
-        header.innerHTML = `${importanceBadge}${ticketBadge}${statusBadge}${blockerWarning}${titleHtml}${reloadSpan}`;
+        header.innerHTML = `${importanceBadge}${ticketBadge}${statusBadge}${blockerWarning}${riskWarning}${titleHtml}${reloadSpan}`;
     }
     section.appendChild(header);
     const filterDiv = document.createElement('div');
@@ -443,7 +448,10 @@ function createChartSection(container, title, index, groupedData, rawData, globa
             <button class="design-btn${hasDesign ? ' has-url' : ''}" id="design-btn-${ticketId}" onclick="openUrlButton('${ticketId}', 'figmaUrl', this)" title="View design (Figma)">
                 🎨 View design
             </button><span class="url-edit-icon" onclick="event.stopPropagation(); showUrlPopover('${ticketId}', 'figmaUrl', this.previousElementSibling)" title="Edit URL">✏️</span>
-        </span>` : ''}
+        </span>
+        <button class="project-risk-btn${hasRiskyItems ? ' has-risks' : ''}" id="project-risk-btn-${ticketId}" onclick="openProjectRiskModal('${ticketId}')" title="Project Risk Assessment">
+            &#x26A0;&#xFE0F; Project Risk
+        </button>` : ''}
         <button class="planning-review-btn" onclick="openPlanningReviewModal(${index})" title="Planning Review">
             📋 Planning Review
         </button>

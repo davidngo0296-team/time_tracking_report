@@ -3,19 +3,34 @@
     "blockers": ""
   },
   "299JUG": {
-    "blockers": ""
+    "blockers": "",
+    "riskStatuses": {
+      "people-0": "safe",
+      "people-1": "safe"
+    }
   },
   "29AFC7": {
-    "blockers": "Retro items:\n- Lack of planning for migration\n- Growing estimation for UI task",
+    "blockers": "Retro items:\n- Lack of planning for migration\n- Growing estimation for UI task\n- Code review pending on the wrong people\n- Lack of communication regarding blockers (QA need logs, Dev finished but not annoucing)",
     "testCaseUrl": "https://docs.google.com/spreadsheets/d/1TfdF2pLDhnc--y7F4ohdJOkMCWtMvIUaAsH0NfrqW_A/edit?gid=149281191#gid=149281191"
   },
   "41X6FO": {
-    "testCaseUrl": "https://docs.google.com/spreadsheets/d/1Q0xCnaMe8gikSoEiFW6aAbMoI1ZSe9TZ1lqLMHq-3uo/edit?gid=1444796289#gid=1444796289"
+    "testCaseUrl": "https://docs.google.com/spreadsheets/d/1Q0xCnaMe8gikSoEiFW6aAbMoI1ZSe9TZ1lqLMHq-3uo/edit?gid=1444796289#gid=1444796289",
+    "riskStatuses": {
+      "people-0": "safe",
+      "people-2": "safe"
+    }
   },
   "41XBES": {
     "testCaseUrl": "https://docs.google.com/spreadsheets/d/17pUtL2lxbftSPOaP40RrmXbVrNtDX2SxxsDVT4_Bk1Q/edit?gid=149281191#gid=149281191"
   },
   "290W0B": {
     "testCaseUrl": "https://docs.google.com/spreadsheets/d/1wdcf-eMEFC-6NxNO_FE9ONKTnpq8yY9tiNcyahiGNCc/edit?gid=149281191#gid=149281191"
+  },
+  "295MDK": {
+    "testCaseUrl": "https://docs.google.com/spreadsheets/d/1c-L5VhbHX7S0vcptX6rlPKRraM1rEpo2cVtRMt3j0wo/edit?gid=149281191#gid=149281191",
+    "riskStatuses": {
+      "people-0": "risky",
+      "tech-1": "safe"
+    }
   }
 }

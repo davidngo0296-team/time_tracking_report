@@ -183,12 +183,26 @@
         </div>
     </div>
 
+    <!-- Project Risk Modal -->
+    <div id="project-risk-modal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header" id="project-risk-modal-title" style="color: #e63e6d;">
+                Project Risk Assessment
+            </div>
+            <div class="modal-body" id="project-risk-body" style="white-space: normal;"></div>
+            <div class="modal-footer">
+                <button class="modal-btn" onclick="closeProjectRiskModal()" style="background: #e63e6d;">Close</button>
+            </div>
+        </div>
+    </div>
+
     <!-- JavaScript Files -->
     <script src="chart-utils.js"></script>
     <script src="chart-render.js"></script>
     <script src="gantt.js"></script>
     <script src="tree.js"></script>
     <script src="planning-review.js"></script>
+    <script src="project-risk.js"></script>
     <script src="app.js"></script>
 </body>
 

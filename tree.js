@@ -270,7 +270,7 @@ function renderTreeNode(task, depth) {
     // Title
     const titleSpan = document.createElement('span');
     titleSpan.className = 'tree-node-title';
-    const icon = task.isContainer ? '\uD83D\uDCC1 ' : getTypeIcon(task.type);
+    const icon = getTypeIcon(task.type);
 
     if (task.link) {
         const a = document.createElement('a');

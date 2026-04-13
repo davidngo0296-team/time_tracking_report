@@ -378,7 +378,7 @@ function renderGanttChart(container, ganttData) {
             // even when bar.style.left is negative (task started before today)
             const taskLabel = document.createElement('span');
             taskLabel.className = 'gantt-bar-label';
-            taskLabel.textContent = (task.isContainer ? '\uD83D\uDCC1 ' : getGanttTypeIcon(task.type)) + (task.title || '');
+            taskLabel.textContent = getGanttTypeIcon(task.type) + (task.title || '');
             const labelLeft = Math.max(startOffset * dayWidth + 8, 8);
             const barRight = (startOffset + duration) * dayWidth - 4;
             taskLabel.style.left = `${labelLeft}px`;
@@ -465,7 +465,7 @@ function renderGanttChart(container, ganttData) {
                 (task.status === 'completed' || task.status === 'access granted' || task.status === 'answered') ? 'completed' : '';
 
             const titleCell = document.createElement('td');
-            const displayTitle = (task.isContainer ? '\uD83D\uDCC1 ' : getGanttTypeIcon(task.type)) + task.title;
+            const displayTitle = getGanttTypeIcon(task.type) + task.title;
             if (task.link) {
                 const a = document.createElement('a');
                 a.href = task.link;
