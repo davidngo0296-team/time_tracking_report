@@ -426,6 +426,7 @@ function createChartSection(container, title, index, groupedData, rawData, globa
             <option value="qa">QA Tasks</option>
             <option value="non-qa">Non-QA Tasks</option>
             <option value="non-qa-non-defect" selected>Non-QA Non-Defect Tasks</option>
+            <option value="defects">Defects Only</option>
         </select>
         ${ticketId ? `<button class="reload-btn" id="reload-btn-${ticketId}" onclick="reloadEnhancement('${ticketId}', this)" title="Reload data for this enhancement">
             🔄 Reload
@@ -630,6 +631,8 @@ function applyEnhancementFilter(index, filterValue) {
         filterFn = t => !t.isQA;
     } else if (filterValue === 'non-qa-non-defect') {
         filterFn = t => !t.isQA && !t.isDefect;
+    } else if (filterValue === 'defects') {
+        filterFn = t => t.isDefect;
     }
 
     const chartConfigs = [

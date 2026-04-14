@@ -22,6 +22,32 @@ function buildTreeData(rawData, enhancementTitle, globalMaxDate, filterValue) {
             const t = (row['Type'] || '').toLowerCase();
             return t !== 'qa' && !t.startsWith('defect');
         });
+    } else if (filterValue === 'defects') {
+        // Build id -> row lookup from all tasks before filtering
+        const rowById = {};
+        tasks.forEach(row => {
+            const id = (row['Task Identifier'] || '').trim();
+            if (id) rowById[id] = row;
+        });
+        // Collect defect IDs + walk up each parent chain to keep ancestor containers
+        const keepIds = new Set();
+        tasks.forEach(row => {
+            const id = (row['Task Identifier'] || '').trim();
+            if (id && (row['Type'] || '').toLowerCase().startsWith('defect')) {
+                keepIds.add(id);
+                let current = row;
+                while (current) {
+                    const parentId = (current['Parent Folder'] || '').trim();
+                    if (!parentId || keepIds.has(parentId)) break;
+                    keepIds.add(parentId);
+                    current = rowById[parentId] || null;
+                }
+            }
+        });
+        tasks = tasks.filter(row => {
+            const id = (row['Task Identifier'] || '').trim();
+            return id && keepIds.has(id);
+        });
     }
 
     // Build parentIds set for container detection

@@ -46,6 +46,8 @@ function buildGanttData(rawData, enhancementTitle, globalMaxDate, filterValue) {
             const t = (row['Type'] || '').toLowerCase();
             return t !== 'qa' && !t.startsWith('defect');
         });
+    } else if (filterValue === 'defects') {
+        tasks = tasks.filter(row => (row['Type'] || '').toLowerCase().startsWith('defect'));
     }
 
     // Build set of identifiers that are parents (have at least 1 child)
