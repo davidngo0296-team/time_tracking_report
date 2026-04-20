@@ -272,7 +272,7 @@ function confirmUpdate() {
 
 function runUpdateData(ticketIds) {
     if (!userToken) {
-        userToken = prompt("Please enter your OrangeLogic API Token:");
+        userToken = (prompt("Please enter your OrangeLogic API Token:") || '').trim();
         if (!userToken) return;
         sessionStorage.setItem('ol_api_token', userToken);
     }
@@ -316,9 +316,25 @@ function runUpdateData(ticketIds) {
                 }
                 throw new Error(result.error);
             }
+            // Surface server log so silent API failures are visible
+            const output = (result.output || '').toString();
+            const lines = output.split('\n');
+            const hasWarning = lines.some(l => /^\s*Warning:/i.test(l));
+            const hasApiError = lines.some(l => /API Error:|Failed to parse API|Request failed/i.test(l));
+            if (hasApiError) {
+                userToken = '';
+                sessionStorage.removeItem('ol_api_token');
+                throw new Error("API call failed -- token may be invalid or expired.\n\nServer log:\n" + output);
+            }
             const ids = Array.isArray(idsToUpdate) ? idsToUpdate : String(idsToUpdate).split(',');
             ids.forEach(id => { if (id.trim()) saveReloadTime(id.trim()); });
-            location.reload();
+            if (hasWarning) {
+                showErrorModal("Update completed with warnings. Check the details below:\n\n" + output);
+                // Still reload after user dismisses the modal
+                document.getElementById('error-modal').addEventListener('click', () => location.reload(), { once: true });
+            } else {
+                location.reload();
+            }
         })
         .catch(error => {
             let msg = error.message;
@@ -335,7 +351,7 @@ function runUpdateData(ticketIds) {
 
 function reloadEnhancement(ticketId, btn) {
     if (!userToken) {
-        userToken = prompt("Please enter your OrangeLogic API Token:");
+        userToken = (prompt("Please enter your OrangeLogic API Token:") || '').trim();
         if (!userToken) return;
         sessionStorage.setItem('ol_api_token', userToken);
     }

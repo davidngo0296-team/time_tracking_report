@@ -7,7 +7,7 @@ const PORT = process.env.PORT || 3001;
 const HTML_FILE = 'time_tracking_report.html';
 const CSV_FILE = 'Time_tracking_data.csv';
 
-const API_URL = "https://link.orangelogic.com/API/Search/v4.0/Search";
+const API_URL = "https://site-tm4.lnk.orangelogic.com/API/Search/v4.0/Search";
 
 const server = http.createServer((req, res) => {
     console.log(`${req.method} ${req.url}`);
@@ -108,7 +108,7 @@ const server = http.createServer((req, res) => {
             let ticketIdsStr = '';
             try {
                 const parsed = JSON.parse(body);
-                token = parsed.token;
+                token = (parsed.token || '').trim();
                 ticketIdsStr = parsed.ticketIds;
             } catch (e) {
                 res.writeHead(400, { 'Content-Type': 'application/json' });
