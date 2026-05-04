@@ -321,10 +321,11 @@ function runUpdateData(ticketIds) {
             const lines = output.split('\n');
             const hasWarning = lines.some(l => /^\s*Warning:/i.test(l));
             const hasApiError = lines.some(l => /API Error:|Failed to parse API|Request failed/i.test(l));
-            if (hasApiError) {
+            const hasTokenExpired = lines.some(l => l.includes('TOKEN_EXPIRED'));
+            if (hasTokenExpired || hasApiError) {
                 userToken = '';
                 sessionStorage.removeItem('ol_api_token');
-                throw new Error("API call failed -- token may be invalid or expired.\n\nServer log:\n" + output);
+                throw new Error("API token expired or invalid. Please generate a new token and try again.");
             }
             const ids = Array.isArray(idsToUpdate) ? idsToUpdate : String(idsToUpdate).split(',');
             ids.forEach(id => { if (id.trim()) saveReloadTime(id.trim()); });

@@ -17,6 +17,7 @@ function getGanttTypeIcon(type) {
     if (t === 'access change request') return '\uD83D\uDD11 '; // 🔑
     if (t === 'research analysis') return '\uD83D\uDD0D '; // 🔍
     if (t === 'merge request execution') return '\uD83D\uDD00 '; // 🔀
+    if (t === 'merge request evaluation') return '\uD83D\uDD0E '; // 🔎
     if (t === 'defect - application') return '\uD83D\uDC1B '; // 🐛
     if (t.startsWith('defect')) return '\uD83D\uDC1E '; // 🐞 (Defect - QA Vietnam and others)
     return '';

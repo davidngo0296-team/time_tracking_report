@@ -5,6 +5,8 @@
 
 let currentPlanningReviewIndex = null;
 let planningReviewChartInstance = null;
+let prSelectedAssignees = null; // Set of selected assignee names
+let prAllAssignees = [];        // Full sorted list for the current modal
 
 function openPlanningReviewModal(index) {
     currentPlanningReviewIndex = index;
@@ -34,6 +36,19 @@ function openPlanningReviewModal(index) {
     });
 
     document.getElementById('planning-review-current-date').textContent = dates[dates.length - 1];
+
+    // Build person filter from all rows for this enhancement
+    const rawData = window.rawParsedData || [];
+    const seen = new Set();
+    rawData.forEach(r => {
+        if (r['Enhancement title'] === info.title && r['Assignee'] && r['Assignee'] !== '(unassigned)') {
+            seen.add(r['Assignee']);
+        }
+    });
+    prAllAssignees = [...seen].sort();
+    prSelectedAssignees = new Set(prAllAssignees);
+    renderPRPersonFilter();
+
     modal.classList.add('show');
     updatePlanningReview();
 }
@@ -44,7 +59,56 @@ function closePlanningReviewModal() {
         planningReviewChartInstance.destroy();
         planningReviewChartInstance = null;
     }
+    prSelectedAssignees = null;
+    prAllAssignees = [];
 }
+
+function renderPRPersonFilter() {
+    const container = document.getElementById('planning-review-person-filter');
+    if (!container) return;
+    container.innerHTML = '';
+
+    if (prAllAssignees.length === 0) return;
+
+    const wrapper = document.createElement('div');
+    wrapper.className = 'pr-person-filter';
+
+    const allSelected = prAllAssignees.every(n => prSelectedAssignees.has(n));
+
+    const toggleAll = document.createElement('button');
+    toggleAll.className = 'pr-person-pill pr-person-all';
+    toggleAll.textContent = allSelected ? 'All' : 'All';
+    toggleAll.style.opacity = allSelected ? '1' : '0.5';
+    toggleAll.onclick = () => {
+        if (allSelected) {
+            prSelectedAssignees = new Set();
+        } else {
+            prSelectedAssignees = new Set(prAllAssignees);
+        }
+        renderPRPersonFilter();
+        updatePlanningReview();
+    };
+    wrapper.appendChild(toggleAll);
+
+    prAllAssignees.forEach(name => {
+        const btn = document.createElement('button');
+        btn.className = 'pr-person-pill' + (prSelectedAssignees.has(name) ? ' active' : '');
+        btn.textContent = name;
+        btn.onclick = () => {
+            if (prSelectedAssignees.has(name)) {
+                prSelectedAssignees.delete(name);
+            } else {
+                prSelectedAssignees.add(name);
+            }
+            renderPRPersonFilter();
+            updatePlanningReview();
+        };
+        wrapper.appendChild(btn);
+    });
+
+    container.appendChild(wrapper);
+}
+
 
 /**
  * Build task map for a single date. Keys by Task Identifier (falls back to title).
@@ -127,17 +191,21 @@ function updatePlanningReview() {
     const filterValue = filterSelect ? filterSelect.value : 'all';
 
     function applyTypeFilter(rows) {
+        let result = rows;
         if (filterValue === 'qa') {
-            return rows.filter(r => (r['Type'] || '').toLowerCase() === 'qa');
+            result = result.filter(r => (r['Type'] || '').toLowerCase() === 'qa');
         } else if (filterValue === 'non-qa') {
-            return rows.filter(r => (r['Type'] || '').toLowerCase() !== 'qa');
+            result = result.filter(r => (r['Type'] || '').toLowerCase() !== 'qa');
         } else if (filterValue === 'non-qa-non-defect') {
-            return rows.filter(r => {
+            result = result.filter(r => {
                 const t = (r['Type'] || '').toLowerCase();
                 return t !== 'qa' && !t.startsWith('defect');
             });
         }
-        return rows;
+        if (prSelectedAssignees !== null) {
+            result = result.filter(r => prSelectedAssignees.has(r['Assignee'] || ''));
+        }
+        return result;
     }
 
     // Get dates from baseline to current (inclusive)
@@ -229,7 +297,7 @@ function updatePlanningReview() {
 
     renderPlanningReviewChart(dateRange, spentPerDate, leftPerDate);
     renderPlanningReviewSummary(baselineTotal, reEstDelta, scopeCreep, removedTotal, currentTotal);
-    renderPlanningReviewTable(dateRange, taskMeta, taskTimeline, existingKeys, newKeys, removedKeys);
+    renderPlanningReviewTable(dateRange, taskMeta, taskTimeline, existingKeys, newKeys, removedKeys, baselineTotal, currentTotal);
 }
 
 function renderPlanningReviewChart(dateRange, spentPerDate, leftPerDate) {
@@ -340,7 +408,7 @@ function renderPlanningReviewSummary(baselineTotal, reEstDelta, scopeCreep, remo
         </div>`;
 }
 
-function renderPlanningReviewTable(dateRange, taskMeta, taskTimeline, existingKeys, newKeys, removedKeys) {
+function renderPlanningReviewTable(dateRange, taskMeta, taskTimeline, existingKeys, newKeys, removedKeys, summaryBaseline, summaryCurrent) {
     const container = document.getElementById('planning-review-table-container');
     const toH = m => (m / 60).toFixed(1);
     const deltaClass = d => d > 0.05 ? 'delta-positive' : d < -0.05 ? 'delta-negative' : 'delta-zero';
@@ -441,12 +509,22 @@ function renderPlanningReviewTable(dateRange, taskMeta, taskTimeline, existingKe
         assigneeData[assignee].tasks.sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta));
     });
 
+    // Pre-compute totals so % column can reference allCurrent
+    const allBaseline = sortedAssignees.reduce((s, a) => s + assigneeData[a].baselineTotal - assigneeData[a].givenAway, 0);
+    const allCurrent = sortedAssignees.reduce((s, a) => s + assigneeData[a].currentTotal - assigneeData[a].received, 0);
+    const totalDelta = (allCurrent - allBaseline) / 60;
+
+    // % uses actual current workload (includes received tasks, no double-counting)
+    const totalCurrentWork = sortedAssignees.reduce((s, a) => s + assigneeData[a].currentTotal, 0);
+    const pctStr = (val) => totalCurrentWork > 0 ? (val / totalCurrentWork * 100).toFixed(1) + '%' : '-';
+
     // Build table
     let html = `<table class="planning-review-table">
         <thead><tr>
             <th style="min-width:280px;"></th>
             <th>Baseline</th>
             <th>Current</th>
+            <th>%</th>
             <th>Delta</th>
         </tr></thead><tbody>`;
 
@@ -457,8 +535,7 @@ function renderPlanningReviewTable(dateRange, taskMeta, taskTimeline, existingKe
         const ad = assigneeData[assignee];
         // Delta excludes transfers: only own re-estimation + new scope - removed scope
         const ownBaseline = ad.baselineTotal - ad.givenAway;
-        const ownCurrent = ad.currentTotal - ad.received;
-        const delta = (ownCurrent - ownBaseline) / 60;
+        const delta = (ad.currentTotal - ownBaseline) / 60;
         const icon = ad.ownReEst > 3 ? '\u274C' : '\u2705';
         const aid = `pr-assignee-${rowId++}`;
 
@@ -477,7 +554,8 @@ function renderPlanningReviewTable(dateRange, taskMeta, taskTimeline, existingKe
         html += `<tr class="pr-assignee-row" data-target="${aid}" onclick="togglePlanningReviewAssignee(this)">
             <td><span class="pr-toggle">\u25B6</span> ${assignee} ${icon}${chipHtml}</td>
             <td>${toH(ownBaseline)}</td>
-            <td>${toH(ownCurrent)}</td>
+            <td>${toH(ad.currentTotal)}</td>
+            <td style="color:#7f8c8d;">${pctStr(ad.currentTotal)}</td>
             <td class="${deltaClass(delta)}">${deltaStr(delta)}</td>
         </tr>`;
 
@@ -490,20 +568,19 @@ function renderPlanningReviewTable(dateRange, taskMeta, taskTimeline, existingKe
                 <td title="${t.status}" style="padding-left:30px;">${t.title}${tagHtml}</td>
                 <td>${blankBaseline ? '<span style="color:#ccc;">\u2014</span>' : toH(t.baseline)}</td>
                 <td>${blankCurrent ? '<span style="color:#ccc;">\u2014</span>' : toH(t.current)}</td>
+                <td></td>
                 <td class="${deltaClass(tDelta)}">${deltaStr(tDelta)}</td>
             </tr>`;
         });
     });
 
-    // Total row (excluding transfers to avoid double-counting)
-    const allBaseline = sortedAssignees.reduce((s, a) => s + assigneeData[a].baselineTotal - assigneeData[a].givenAway, 0);
-    const allCurrent = sortedAssignees.reduce((s, a) => s + assigneeData[a].currentTotal - assigneeData[a].received, 0);
-    const totalDelta = (allCurrent - allBaseline) / 60;
+    const totalDeltaH = (summaryCurrent - summaryBaseline) / 60;
     html += `<tr class="total-row">
         <td><strong>TOTAL</strong></td>
-        <td>${toH(allBaseline)}</td>
-        <td>${toH(allCurrent)}</td>
-        <td class="${deltaClass(totalDelta)}">${deltaStr(totalDelta)}</td>
+        <td>${toH(summaryBaseline)}</td>
+        <td>${toH(summaryCurrent)}</td>
+        <td style="color:#7f8c8d;">100%</td>
+        <td class="${deltaClass(totalDeltaH)}">${deltaStr(totalDeltaH)}</td>
     </tr>`;
 
     html += '</tbody></table>';
@@ -523,3 +600,4 @@ function togglePlanningReviewAssignee(row) {
 window.openPlanningReviewModal = openPlanningReviewModal;
 window.closePlanningReviewModal = closePlanningReviewModal;
 window.togglePlanningReviewAssignee = togglePlanningReviewAssignee;
+window.renderPRPersonFilter = renderPRPersonFilter;

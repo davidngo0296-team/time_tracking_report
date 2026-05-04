@@ -1800,3 +1800,40 @@ h2 {
     color: #555;
     line-height: 1.55;
 }
+
+/* Planning Review -- Person Filter */
+.pr-person-filter {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+}
+
+.pr-person-pill {
+    padding: 3px 11px;
+    border-radius: 999px;
+    border: 1.5px solid #bdc3c7;
+    background: #f0f0f0;
+    color: #7f8c8d;
+    font-size: 0.8em;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
+    white-space: nowrap;
+}
+
+.pr-person-pill.active {
+    background: #2980b9;
+    border-color: #2980b9;
+    color: #fff;
+}
+
+.pr-person-pill.pr-person-all {
+    background: #ecf0f1;
+    border-color: #95a5a6;
+    color: #555;
+    font-weight: 600;
+}
+
+.pr-person-pill:hover {
+    filter: brightness(0.93);
+}

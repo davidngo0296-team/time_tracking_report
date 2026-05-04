@@ -37,5 +37,30 @@
       "people-0": "risky",
       "tech-1": "safe"
     }
+  },
+  "421VN3": {
+    "riskStatuses": {
+      "people-0": "safe",
+      "people-1": "safe",
+      "people-2": "safe"
+    }
+  },
+  "421VJV": {
+    "riskStatuses": {
+      "people-0": "safe",
+      "people-1": "safe",
+      "people-2": "safe",
+      "tech-0": "risky",
+      "tech-1": "safe",
+      "tech-2": "safe",
+      "tech-3": "safe",
+      "tech-4": "safe",
+      "scope-0": "safe",
+      "scope-1": "safe",
+      "external-0": "safe",
+      "external-1": "safe",
+      "external-2": "safe",
+      "delivery-2": "safe"
+    }
   }
 }

@@ -141,7 +141,7 @@ const server = http.createServer((req, res) => {
 
 // --- Logic ---
 
-const ALLOWED_TYPES = ["Development", "Configuration Request", "Defect - QA Vietnam", "Defect - Application", "Question", "QA", "Infrastructure Deployment", "Access Change Request", "Infrastructure Project", "Research Analysis", "Infrastructure Configuration", "Merge Request Execution"];
+const ALLOWED_TYPES = ["Development", "Configuration Request", "Defect - QA Vietnam", "Defect - Application", "Question", "QA", "Infrastructure Deployment", "Access Change Request", "Infrastructure Project", "Research Analysis", "Infrastructure Configuration", "Merge Request Execution", "Merge Request Evaluation"];
 const CONTAINER_TYPES = ["Development", "QA", "Infrastructure Deployment", "Access Change Request"];
 const NO_RECURSE_TYPES = ["Technical Debt Code"];
 const IGNORED_STATUSES = ["Obsolete", "Duplicate", "Closed", "Needs Peer Review", "Implemented on Dev", "In Revision", "Access granted", "Completed"];
@@ -591,6 +591,8 @@ function searchOLTaskPage(query, token, start) {
                     const json = JSON.parse(data);
                     if (json.success === false) {
                         reject(new Error(`API Error: ${json.error}`));
+                    } else if (json.APIRequestInfo && json.APIRequestInfo.IsLoggedIn === false) {
+                        reject(new Error('TOKEN_EXPIRED'));
                     } else {
                         resolve(json.APIResponse ? json.APIResponse.Items : []);
                     }
