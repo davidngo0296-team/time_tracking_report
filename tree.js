@@ -184,13 +184,17 @@ function openTreeModal(index) {
     modal.classList.add('show');
 
     const rawData = window.rawParsedData || [];
-    const globalMaxDate = window.globalMaxDate || '';
+
+    // Use the enhancement's own latest date, not the global max date across all enhancements
+    const enhancementMaxDate = (info.dates && info.dates.length > 0)
+        ? info.dates[info.dates.length - 1]
+        : (window.globalMaxDate || '');
 
     // Read current filter value from dropdown
     const filterSelect = document.getElementById(`filter-${index}`);
     const filterValue = filterSelect ? filterSelect.value : 'all';
 
-    const treeData = buildTreeData(rawData, info.title, globalMaxDate, filterValue);
+    const treeData = buildTreeData(rawData, info.title, enhancementMaxDate, filterValue);
     renderTree(container, treeData);
 }
 

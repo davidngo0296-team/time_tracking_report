@@ -129,7 +129,8 @@ function buildPlanningTaskMap(rows) {
             total: spent + left,
             type: row['Type'] || '',
             status: row['Status'] || '',
-            assignee: row['Assignee'] || '(unassigned)'
+            assignee: row['Assignee'] || '(unassigned)',
+            link: row['Cortex Link'] || ''
         };
     });
     return map;
@@ -250,6 +251,7 @@ function updatePlanningReview() {
                     currentAssignee: task.assignee,
                     assignee: task.assignee,
                     status: task.status,
+                    link: task.link || '',
                     firstSeen: di, lastSeen: di
                 };
             } else {
@@ -258,6 +260,7 @@ function updatePlanningReview() {
                 taskMeta[cKey].currentAssignee = task.assignee;
                 taskMeta[cKey].assignee = task.assignee;
                 taskMeta[cKey].status = task.status;
+                if (task.link) taskMeta[cKey].link = task.link;
             }
         });
     });
@@ -454,7 +457,7 @@ function renderPlanningReviewTable(dateRange, taskMeta, taskTimeline, existingKe
             assigneeData[assignee].scopeNew += current;
             assigneeData[assignee].tasks.push({
                 title: meta.title, baseline, current, delta: current,
-                tag: 'NEW', tagColor: '#e67e22', status: meta.status
+                tag: 'NEW', tagColor: '#e67e22', status: meta.status, link: meta.link
             });
         } else if (isRemoved) {
             // Removed task: attribute to baseline assignee
@@ -464,7 +467,7 @@ function renderPlanningReviewTable(dateRange, taskMeta, taskTimeline, existingKe
             assigneeData[assignee].scopeRemoved += baseline;
             assigneeData[assignee].tasks.push({
                 title: meta.title, baseline, current: 0, delta: -baseline,
-                tag: 'REMOVED', tagColor: '#95a5a6', status: meta.status
+                tag: 'REMOVED', tagColor: '#95a5a6', status: meta.status, link: meta.link
             });
         } else if (sameOwner) {
             // Same owner: own re-estimation
@@ -475,7 +478,7 @@ function renderPlanningReviewTable(dateRange, taskMeta, taskTimeline, existingKe
             assigneeData[assignee].ownReEst += (current - baseline);
             assigneeData[assignee].tasks.push({
                 title: meta.title, baseline, current, delta: current - baseline,
-                tag: null, tagColor: null, status: meta.status
+                tag: null, tagColor: null, status: meta.status, link: meta.link
             });
         } else {
             // Reassigned: show under BOTH assignees
@@ -485,7 +488,7 @@ function renderPlanningReviewTable(dateRange, taskMeta, taskTimeline, existingKe
             assigneeData[meta.baselineAssignee].givenAway += baseline;
             assigneeData[meta.baselineAssignee].tasks.push({
                 title: meta.title, baseline, current: 0, delta: -baseline,
-                tag: `\u2192 ${meta.currentAssignee}`, tagColor: '#8e44ad', status: meta.status
+                tag: `\u2192 ${meta.currentAssignee}`, tagColor: '#8e44ad', status: meta.status, link: meta.link
             });
 
             // Current assignee: "received"
@@ -494,7 +497,7 @@ function renderPlanningReviewTable(dateRange, taskMeta, taskTimeline, existingKe
             assigneeData[meta.currentAssignee].received += current;
             assigneeData[meta.currentAssignee].tasks.push({
                 title: meta.title, baseline: 0, current, delta: current,
-                tag: `\u2190 ${meta.baselineAssignee}`, tagColor: '#2980b9', status: meta.status
+                tag: `\u2190 ${meta.baselineAssignee}`, tagColor: '#2980b9', status: meta.status, link: meta.link
             });
         }
     });
@@ -564,8 +567,11 @@ function renderPlanningReviewTable(dateRange, taskMeta, taskTimeline, existingKe
             const tagHtml = t.tag ? ` <span style="color:${t.tagColor};font-size:0.8em;">(${t.tag})</span>` : '';
             const blankBaseline = t.tag === 'NEW' || (t.tag && t.tag.startsWith('\u2190'));
             const blankCurrent = t.tag === 'REMOVED' || (t.tag && t.tag.startsWith('\u2192'));
+            const titleHtml = t.link
+                ? `<a href="${t.link}" target="_blank" class="pr-task-link">${t.title}</a>`
+                : t.title;
             html += `<tr class="pr-task-row ${aid}" style="display:none;">
-                <td title="${t.status}" style="padding-left:30px;">${t.title}${tagHtml}</td>
+                <td title="${t.status}" style="padding-left:30px;">${titleHtml}${tagHtml}</td>
                 <td>${blankBaseline ? '<span style="color:#ccc;">\u2014</span>' : toH(t.baseline)}</td>
                 <td>${blankCurrent ? '<span style="color:#ccc;">\u2014</span>' : toH(t.current)}</td>
                 <td></td>

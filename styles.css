@@ -1801,6 +1801,16 @@ h2 {
     line-height: 1.55;
 }
 
+/* Planning Review -- Task links */
+.pr-task-link {
+    color: inherit;
+    text-decoration: none;
+}
+.pr-task-link:hover {
+    text-decoration: underline;
+    color: #2980b9;
+}
+
 /* Planning Review -- Person Filter */
 .pr-person-filter {
     display: flex;

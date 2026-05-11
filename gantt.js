@@ -221,14 +221,18 @@ function openGanttModal(index) {
 
     // Get raw data from global storage
     const rawData = window.rawParsedData || [];
-    const globalMaxDate = window.globalMaxDate || '';
+
+    // Use the enhancement's own latest date, not the global max
+    const enhancementMaxDate = (info.dates && info.dates.length > 0)
+        ? info.dates[info.dates.length - 1]
+        : (window.globalMaxDate || '');
 
     // Read current filter value from dropdown
     const filterSelect = document.getElementById(`filter-${index}`);
     const filterValue = filterSelect ? filterSelect.value : 'all';
 
     // Build Gantt data
-    const ganttData = buildGanttData(rawData, info.title, globalMaxDate, filterValue);
+    const ganttData = buildGanttData(rawData, info.title, enhancementMaxDate, filterValue);
     ganttDataStore[index] = ganttData;
 
     // Render Gantt chart
