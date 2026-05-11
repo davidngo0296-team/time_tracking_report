@@ -218,6 +218,11 @@ async function runUpdateLogic(token, ticketIdsStr) {
         console.log("Migrating CSV to include Parent Folder...");
         trackingData.forEach(row => row['Parent Folder'] = '');
     }
+    // Migration: If no "Created date" field, add it
+    if (trackingData.length > 0 && !('Created date' in trackingData[0])) {
+        console.log("Migrating CSV to include Created date...");
+        trackingData.forEach(row => row['Created date'] = '');
+    }
 
     // Index for fast lookup — prefer Task Identifier as key (handles renames)
     const dataIndex = {};
@@ -434,6 +439,7 @@ async function runUpdateLogic(token, ticketIdsStr) {
             const estimatedStartDate = task["Document.CurrentEstimatedStartDate"] || "";
             const estimatedEndDate = task["Document.CurrentEstimatedEndDate"] || "";
             const parentFolder = task["ParentFolderIdentifier"] || "";
+            const createDate = task["CoreField.CreateDate"] || '';
 
             // Extract dependencies - can be array of objects or string
             let dependencies = "";
@@ -474,6 +480,7 @@ async function runUpdateLogic(token, ticketIdsStr) {
                 'Estimated Start Date': estimatedStartDate,
                 'Estimated End Date': estimatedEndDate,
                 'Parent Folder': parentFolder,
+                'Created date': createDate,
                 'Enhancement Status': enhancementStatus
             };
 
@@ -569,7 +576,7 @@ function searchOLTaskPage(query, token, start) {
             "Document.CurrentEstimatedCompletionDate", "Document.CortexShareLinkRaw",
             "product.Importance-for-next-release", "Document.Dependencies",
             "Document.CurrentEstimatedStartDate", "Document.CurrentEstimatedEndDate",
-            "ParentFolderIdentifier"
+            "ParentFolderIdentifier", "CoreField.CreateDate"
         ].join(",");
 
         const params = new URLSearchParams({

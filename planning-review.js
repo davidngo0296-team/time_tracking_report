@@ -8,6 +8,14 @@ let planningReviewChartInstance = null;
 let prSelectedAssignees = null; // Set of selected assignee names
 let prAllAssignees = [];        // Full sorted list for the current modal
 
+function formatCreatedDate(raw) {
+    if (!raw) return '';
+    const d = new Date(raw);
+    if (isNaN(d.getTime())) return '';
+    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    return `[${months[d.getMonth()]} ${String(d.getDate()).padStart(2,'0')}]`;
+}
+
 function openPlanningReviewModal(index) {
     currentPlanningReviewIndex = index;
     const info = window.enhancementInfo[index];
@@ -130,7 +138,8 @@ function buildPlanningTaskMap(rows) {
             type: row['Type'] || '',
             status: row['Status'] || '',
             assignee: row['Assignee'] || '(unassigned)',
-            link: row['Cortex Link'] || ''
+            link: row['Cortex Link'] || '',
+            created: row['Created date'] || ''
         };
     });
     return map;
@@ -252,6 +261,7 @@ function updatePlanningReview() {
                     assignee: task.assignee,
                     status: task.status,
                     link: task.link || '',
+                    created: task.created || '',
                     firstSeen: di, lastSeen: di
                 };
             } else {
@@ -261,6 +271,7 @@ function updatePlanningReview() {
                 taskMeta[cKey].assignee = task.assignee;
                 taskMeta[cKey].status = task.status;
                 if (task.link) taskMeta[cKey].link = task.link;
+                if (task.created) taskMeta[cKey].created = task.created;
             }
         });
     });
@@ -457,7 +468,7 @@ function renderPlanningReviewTable(dateRange, taskMeta, taskTimeline, existingKe
             assigneeData[assignee].scopeNew += current;
             assigneeData[assignee].tasks.push({
                 title: meta.title, baseline, current, delta: current,
-                tag: 'NEW', tagColor: '#e67e22', status: meta.status, link: meta.link
+                tag: 'NEW', tagColor: '#e67e22', status: meta.status, link: meta.link, created: meta.created
             });
         } else if (isRemoved) {
             // Removed task: attribute to baseline assignee
@@ -467,7 +478,7 @@ function renderPlanningReviewTable(dateRange, taskMeta, taskTimeline, existingKe
             assigneeData[assignee].scopeRemoved += baseline;
             assigneeData[assignee].tasks.push({
                 title: meta.title, baseline, current: 0, delta: -baseline,
-                tag: 'REMOVED', tagColor: '#95a5a6', status: meta.status, link: meta.link
+                tag: 'REMOVED', tagColor: '#95a5a6', status: meta.status, link: meta.link, created: meta.created
             });
         } else if (sameOwner) {
             // Same owner: own re-estimation
@@ -478,7 +489,7 @@ function renderPlanningReviewTable(dateRange, taskMeta, taskTimeline, existingKe
             assigneeData[assignee].ownReEst += (current - baseline);
             assigneeData[assignee].tasks.push({
                 title: meta.title, baseline, current, delta: current - baseline,
-                tag: null, tagColor: null, status: meta.status, link: meta.link
+                tag: null, tagColor: null, status: meta.status, link: meta.link, created: meta.created
             });
         } else {
             // Reassigned: show under BOTH assignees
@@ -488,7 +499,7 @@ function renderPlanningReviewTable(dateRange, taskMeta, taskTimeline, existingKe
             assigneeData[meta.baselineAssignee].givenAway += baseline;
             assigneeData[meta.baselineAssignee].tasks.push({
                 title: meta.title, baseline, current: 0, delta: -baseline,
-                tag: `\u2192 ${meta.currentAssignee}`, tagColor: '#8e44ad', status: meta.status, link: meta.link
+                tag: `\u2192 ${meta.currentAssignee}`, tagColor: '#8e44ad', status: meta.status, link: meta.link, created: meta.created
             });
 
             // Current assignee: "received"
@@ -497,7 +508,7 @@ function renderPlanningReviewTable(dateRange, taskMeta, taskTimeline, existingKe
             assigneeData[meta.currentAssignee].received += current;
             assigneeData[meta.currentAssignee].tasks.push({
                 title: meta.title, baseline: 0, current, delta: current,
-                tag: `\u2190 ${meta.baselineAssignee}`, tagColor: '#2980b9', status: meta.status, link: meta.link
+                tag: `\u2190 ${meta.baselineAssignee}`, tagColor: '#2980b9', status: meta.status, link: meta.link, created: meta.created
             });
         }
     });
@@ -570,8 +581,10 @@ function renderPlanningReviewTable(dateRange, taskMeta, taskTimeline, existingKe
             const titleHtml = t.link
                 ? `<a href="${t.link}" target="_blank" class="pr-task-link">${t.title}</a>`
                 : t.title;
+            const createdStr = formatCreatedDate(t.created);
+            const createdHtml = createdStr ? `<span class="pr-task-created">${createdStr}</span> ` : '';
             html += `<tr class="pr-task-row ${aid}" style="display:none;">
-                <td title="${t.status}" style="padding-left:30px;">${titleHtml}${tagHtml}</td>
+                <td title="${t.status}" style="padding-left:30px;">${createdHtml}${titleHtml}${tagHtml}</td>
                 <td>${blankBaseline ? '<span style="color:#ccc;">\u2014</span>' : toH(t.baseline)}</td>
                 <td>${blankCurrent ? '<span style="color:#ccc;">\u2014</span>' : toH(t.current)}</td>
                 <td></td>

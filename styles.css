@@ -1810,6 +1810,12 @@ h2 {
     text-decoration: underline;
     color: #2980b9;
 }
+.pr-task-created {
+    color: #7f8c8d;
+    font-size: 0.85em;
+    font-family: monospace;
+    margin-right: 4px;
+}
 
 /* Planning Review -- Person Filter */
 .pr-person-filter {
