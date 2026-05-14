@@ -390,15 +390,12 @@ function createChartSection(container, title, index, groupedData, rawData, globa
     }
 
     const meta = window.enhancementMeta || {};
-    const hasBlockers = ticketId && meta[ticketId] && (meta[ticketId].blockers || '').trim().length > 0;
+    const hasRetroItems = ticketId && meta[ticketId] && (meta[ticketId].retroItems || '').trim().length > 0;
     const hasTestCase = ticketId && meta[ticketId] && (meta[ticketId].testCaseUrl || '').trim().length > 0;
     const hasDesign = ticketId && meta[ticketId] && (meta[ticketId].figmaUrl || '').trim().length > 0;
     const riskStatuses = ticketId && meta[ticketId] && meta[ticketId].riskStatuses ? meta[ticketId].riskStatuses : {};
     const hasRiskyItems = Object.values(riskStatuses).some(s => s === 'risky');
 
-    let blockerWarning = hasBlockers
-        ? `<span title="Has blockers" style="color: #e67e22; font-size: 0.85em; margin-right: 6px;">⚠️</span>`
-        : '';
     let riskWarning = hasRiskyItems
         ? `<span class="risk-warning-indicator" title="Has risky items" style="color: #e74c3c; font-size: 0.85em; margin-right: 6px;">&#x1F534;</span>`
         : '';
@@ -412,9 +409,9 @@ function createChartSection(container, title, index, groupedData, rawData, globa
     const reloadSpan = ticketId ? `<span id="last-reload-span-${ticketId}" style="color: #95a5a6; font-size: 0.75em; font-weight: normal; margin-left: 12px;">${reloadText}</span>` : '';
 
     if (enhancementETA) {
-        header.innerHTML = `${importanceBadge}${ticketBadge}${statusBadge}${blockerWarning}${riskWarning}${titleHtml} <span id="eta-span-${index}" style="color: #3498db; font-size: 0.8em; font-weight: normal;">(ETA ${enhancementETA})</span>${reloadSpan}`;
+        header.innerHTML = `${importanceBadge}${ticketBadge}${statusBadge}${riskWarning}${titleHtml} <span id="eta-span-${index}" style="color: #3498db; font-size: 0.8em; font-weight: normal;">(ETA ${enhancementETA})</span>${reloadSpan}`;
     } else {
-        header.innerHTML = `${importanceBadge}${ticketBadge}${statusBadge}${blockerWarning}${riskWarning}${titleHtml}${reloadSpan}`;
+        header.innerHTML = `${importanceBadge}${ticketBadge}${statusBadge}${riskWarning}${titleHtml}${reloadSpan}`;
     }
     section.appendChild(header);
     const filterDiv = document.createElement('div');
@@ -437,8 +434,8 @@ function createChartSection(container, title, index, groupedData, rawData, globa
         <button class="tree-btn" onclick="openTreeModal(${index})" title="View Task Tree">
             🌳 Task Tree
         </button>
-        ${ticketId ? `<button class="blockers-btn${hasBlockers ? ' has-blockers' : ''}" id="blockers-btn-${index}" onclick="openBlockersModal('${ticketId}', ${index})" title="Edit blockers">
-            🚧 Blockers
+        ${ticketId ? `<button class="retro-btn${hasRetroItems ? ' has-retro-items' : ''}" id="retro-btn-${index}" onclick="openRetroModal('${ticketId}', ${index})" title="Edit retro items">
+            &#x1FA9E; Retro items
         </button>
         <span class="url-btn-group">
             <button class="testcase-btn${hasTestCase ? ' has-url' : ''}" id="testcase-btn-${ticketId}" onclick="openUrlButton('${ticketId}', 'testCaseUrl', this)" title="Test case document">

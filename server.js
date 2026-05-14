@@ -9,6 +9,27 @@ const CSV_FILE = 'Time_tracking_data.csv';
 
 const API_URL = "https://site-tm4.lnk.orangelogic.com/API/Search/v4.0/Search";
 
+// One-shot: rename legacy `blockers` -> `retroItems` in enhancement_meta.json
+(() => {
+    const metaPath = path.join(__dirname, 'enhancement_meta.json');
+    if (!fs.existsSync(metaPath)) return;
+    let meta;
+    try { meta = JSON.parse(fs.readFileSync(metaPath, 'utf8')); } catch { return; }
+    let changed = false;
+    for (const ticketId of Object.keys(meta)) {
+        const entry = meta[ticketId];
+        if (entry && typeof entry === 'object' && 'blockers' in entry && !('retroItems' in entry)) {
+            entry.retroItems = entry.blockers;
+            delete entry.blockers;
+            changed = true;
+        }
+    }
+    if (changed) {
+        fs.writeFileSync(metaPath, JSON.stringify(meta, null, 2), 'utf8');
+        console.log('Migrated enhancement_meta.json: blockers -> retroItems');
+    }
+})();
+
 const server = http.createServer((req, res) => {
     console.log(`${req.method} ${req.url}`);
 

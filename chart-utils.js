@@ -64,6 +64,10 @@ function processDataForTimeSeries(data) {
         });
     }
 
+    // Tracks seen task identifiers per (enhancement, date) to prevent double-counting
+    // duplicate CSV rows (can exist from historical data before server-side dedup was added).
+    const seenTaskKeys = new Set();
+
     data.forEach(row => {
         const title = row['Enhancement title'];
 
@@ -73,6 +77,15 @@ function processDataForTimeSeries(data) {
         }
 
         const date = row['Capture date'];
+        const taskIdentifier = (row['Task Identifier'] || '').trim();
+
+        // Skip duplicate rows for the same task on the same date within the same enhancement
+        if (taskIdentifier) {
+            const key = `${title}|${date}|${taskIdentifier}`;
+            if (seenTaskKeys.has(key)) return;
+            seenTaskKeys.add(key);
+        }
+
         const assignee = row['Assignee'] || '(unassigned)';
         const spent = parseFloat(row['Time spent']) || 0;
         const left = parseFloat(row['Time left']) || 0;

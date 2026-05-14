@@ -1,22 +1,22 @@
 {
   "41UJ8D": {
-    "blockers": ""
+    "retroItems": ""
   },
   "299JUG": {
-    "blockers": "",
     "riskStatuses": {
       "people-0": "safe",
       "people-1": "safe"
-    }
+    },
+    "retroItems": ""
   },
   "29AFC7": {
-    "blockers": "Went well:\n- Active communication (developers actively communicated with each other while implementing different components in parallel, as well as in QA phase).\n- Quick response on missing parts (logs, migration) \n\nDid not went well\n- Lack of planning for data migration & logs for QA \n- Underestimation for many dev task (UI, core logic, etc.)\n- P1 cases reported passed by dev but failed on QA\n- Dev testing was included pretty late into development (https://link.orangelogic.com/asset-management/2P7YOHEFKONE7)\n- \n",
     "testCaseUrl": "https://docs.google.com/spreadsheets/d/1TfdF2pLDhnc--y7F4ohdJOkMCWtMvIUaAsH0NfrqW_A/edit?gid=149281191#gid=149281191",
     "riskStatuses": {
       "people-0": "safe",
       "people-1": "safe",
       "people-2": "risky"
-    }
+    },
+    "retroItems": "<h3><b>Went well:</b></h3><ul><li>Active communication (developers actively communicated with each other while implementing different components in parallel, as well as in QA phase).</li><li>Quick response on missing parts (logs, migration)</li></ul><h3><b>Did not went well</b></h3><ul><li>Lack of planning for data migration &amp; logs for QA </li><li>Underestimation for many dev task (UI, core logic, etc.)</li><li>P1 cases reported passed by dev but failed on QA</li><li><a href=\"https://link.orangelogic.com/asset-management/2P7YOHEFKONE7\">Dev testing was included pretty late into development</a> <br></li></ul><div><h3><b>Problems:</b></h3></div><div><ul><li>(1) Lack of non-functional requirements</li><li>(4) Lack of test planning during development planning</li></ul></div><br>"
   },
   "41X6FO": {
     "testCaseUrl": "https://docs.google.com/spreadsheets/d/1Q0xCnaMe8gikSoEiFW6aAbMoI1ZSe9TZ1lqLMHq-3uo/edit?gid=1444796289#gid=1444796289",
@@ -61,6 +61,11 @@
       "external-1": "safe",
       "external-2": "safe",
       "delivery-2": "safe"
+    }
+  },
+  "421QM1": {
+    "riskStatuses": {
+      "tech-0": "risky"
     }
   }
 }

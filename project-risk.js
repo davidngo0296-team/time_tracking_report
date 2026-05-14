@@ -11,8 +11,10 @@ const RISK_CATEGORIES = [
         border: 'rgba(139,92,246,0.25)',
         risks: [
             { label: 'Key-person dependency', detail: 'Critical knowledge locked in one person. If they leave, delivery stalls.', ask: 'If X got sick for 3 weeks, what stops?', solution: 'Pair programming, documented runbooks, rotate ownership of critical components. No one should be the sole expert on anything.' },
-            { label: 'Skills gap', detail: 'Team lacks experience in the required tech or domain.', ask: 'Has the team built something like this before?', solution: 'Run a spike or POC early. Budget for training time. Consider embedding a contractor with the needed expertise short-term.' },
+            { label: 'New domain', detail: 'Team lacks experience in the required tech or domain.', ask: 'Has the team built something like this before?', solution: 'Run a spike or POC early. Budget for training time. Consider embedding a contractor with the needed expertise short-term.' },
             { label: 'Team overload', detail: 'People stretched across too many projects. Context-switching kills velocity.', ask: 'What else is competing for their time?', solution: 'Negotiate dedicated allocation with resource managers. Make the cost of context-switching visible with data. Protect the team\'s focus.' },
+            { label: 'Member time off', detail: 'Planned or unplanned absences reduce available capacity mid-sprint.', ask: 'Who is out and when? Is capacity accounted for in the plan?', solution: 'Track planned leave in the sprint calendar at planning time. Apply a capacity buffer for unplanned absences. Cross-train so no absence creates a single-point blockage.' },
+            { label: 'Poor estimation', detail: 'Estimates based on hope, not historical data.', ask: 'What did similar work actually take last time?', solution: 'Use reference-class forecasting: compare to actual data from similar past work. Track estimate accuracy and apply a correction factor.' },
         ],
     },
     {
@@ -27,6 +29,8 @@ const RISK_CATEGORIES = [
             { label: 'Tech debt drag', detail: 'Existing codebase is fragile, poorly documented, or hard to change.', ask: 'How long does a \'simple change\' actually take here?', solution: 'Allocate 15-20% of sprint capacity to tech debt reduction. Track \'actual vs estimated\' to make the drag visible to stakeholders.' },
             { label: 'Security & compliance', detail: 'Auth, encryption, or regulatory requirements not fully addressed.', ask: 'Has security reviewed this? What regulations apply?', solution: 'Engage security and compliance teams at design stage, not at release. Build security requirements into the Definition of Done.' },
             { label: 'Data migration', detail: 'Moving data between systems is complex, lossy, or untested.', ask: 'How clean is the source data? What\'s the rollback plan?', solution: 'Run a trial migration early with production-like data. Profile source data quality. Build automated validation checks and a documented rollback procedure.' },
+            { label: 'Performance impact', detail: 'New functionality degrades response times or system throughput.', ask: 'Have we profiled the hot path? What are the SLA targets?', solution: 'Define performance budgets upfront. Run load tests against production-like environments. Address bottlenecks before release, not after.' },
+            { label: 'Backward compatibility', detail: 'Changes break existing integrations, APIs, or data contracts.', ask: 'Who depends on the current behavior, and have they been consulted?', solution: 'Version APIs explicitly. Write contract tests with downstream consumers. Use deprecation cycles rather than hard breaks. Communicate changes well in advance.' },
         ],
     },
     {
@@ -37,8 +41,7 @@ const RISK_CATEGORIES = [
         border: 'rgba(243,156,18,0.25)',
         risks: [
             { label: 'Requirements ambiguity', detail: 'Vague specs interpreted differently by different people.', ask: 'Could two devs read this and build different things?', solution: 'Write acceptance criteria in Given/When/Then format. Run a \'three amigos\' session (dev, QA, BA) on every story before sprint planning.' },
-            { label: 'Misaligned expectations', detail: 'Stakeholders expect something different from what\'s being built.', ask: 'When did the user last see a working demo?', solution: 'Demo working software every sprint. Share clickable prototypes before building. Misalignment caught in week 2 costs hours; in month 6 costs months.' },
-            { label: 'Gold plating', detail: 'Team over-engineers beyond what\'s needed, burning time.', ask: 'Are we building what\'s needed, or what\'s \'cool\'?', solution: 'Tie every task to a user story and acceptance criteria. If it\'s not in the criteria, it\'s not in the sprint. Coach the team on YAGNI.' },
+            { label: 'Over engineering', detail: 'Team over-engineers beyond what\'s needed, burning time.', ask: 'Are we building what\'s needed, or what\'s \'cool\'?', solution: 'Tie every task to a user story and acceptance criteria. If it\'s not in the criteria, it\'s not in the sprint. Coach the team on YAGNI.' },
         ],
     },
     {
@@ -60,8 +63,6 @@ const RISK_CATEGORIES = [
         bg: 'rgba(231,76,60,0.10)',
         border: 'rgba(231,76,60,0.25)',
         risks: [
-            { label: 'Poor estimation', detail: 'Estimates based on hope, not historical data.', ask: 'What did similar work actually take last time?', solution: 'Use reference-class forecasting: compare to actual data from similar past work. Track estimate accuracy and apply a correction factor.' },
-            { label: 'Absent governance', detail: 'No clear decision-making or change control. Decisions stall.', ask: 'Who approves scope changes? How fast?', solution: 'Define a governance framework at kickoff: who decides what, escalation paths, and SLAs for decisions (e.g., scope changes approved within 48hrs).' },
             { label: 'Release complexity', detail: 'Deployment is manual, risky, or requires long downtime.', ask: 'Can we deploy and roll back in under an hour?', solution: 'Invest in CI/CD automation. Practice deployments in staging. Write a rollback runbook and test it. Aim for zero-downtime deployments.' },
             { label: 'Last-mile blindness', detail: 'Nobody plans go-live: training, comms, support handover.', ask: 'What needs to be true on day 1 after launch?', solution: 'Create a go-live checklist covering training, support handover, monitoring, comms, and runbooks. Start planning at project midpoint, not the final sprint.' },
         ],

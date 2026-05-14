@@ -466,52 +466,68 @@ function refreshEnhancementSection(ticketId, btn) {
         });
 }
 
-// --- Blockers ---
-let currentBlockersTicketId = '';
-let currentBlockersIndex = null;
+// --- Retro Items ---
+let currentRetroTicketId = '';
+let currentRetroIndex = null;
 
-function openBlockersModal(ticketId, index) {
-    currentBlockersTicketId = ticketId;
-    currentBlockersIndex = index;
+function isHtmlContent(s) {
+    return /<[a-z][\s\S]*>/i.test(s || '');
+}
+
+function renderRetroContent(raw) {
+    const v = (raw || '').trim();
+    if (!v) return '<span class="retro-placeholder">No retro items captured.</span>';
+    return isHtmlContent(v) ? v : renderMarkdown(v);
+}
+
+function setRetroView(html) {
+    const el = document.getElementById('retro-modal-view');
+    el.innerHTML = html;
+    el.querySelectorAll('a').forEach(a => { a.target = '_blank'; a.rel = 'noopener noreferrer'; });
+}
+
+function openRetroModal(ticketId, index) {
+    currentRetroTicketId = ticketId;
+    currentRetroIndex = index;
     const meta = window.enhancementMeta || {};
-    const blockers = (meta[ticketId] && meta[ticketId].blockers) || '';
-    const viewEl = document.getElementById('blockers-modal-view');
-    viewEl.innerHTML = blockers.trim()
-        ? renderMarkdown(blockers)
-        : '<span class="blockers-placeholder">No blockers noted.</span>';
-    document.getElementById('blockers-modal-textarea').style.display = 'none';
-    document.getElementById('blockers-modal-view').style.display = 'block';
-    document.getElementById('blockers-footer-view').style.display = 'flex';
-    document.getElementById('blockers-footer-edit').style.display = 'none';
-    document.getElementById('blockers-modal').classList.add('show');
+    const retroItems = (meta[ticketId] && meta[ticketId].retroItems) || '';
+    setRetroView(renderRetroContent(retroItems));
+    document.getElementById('retro-editor-wrapper').style.display = 'none';
+    document.getElementById('retro-modal-view').style.display = 'block';
+    document.getElementById('retro-footer-view').style.display = 'flex';
+    document.getElementById('retro-footer-edit').style.display = 'none';
+    document.getElementById('retro-modal').classList.add('show');
 }
 
-function editBlockersModal() {
+function editRetroModal() {
     const meta = window.enhancementMeta || {};
-    const blockers = (meta[currentBlockersTicketId] && meta[currentBlockersTicketId].blockers) || '';
-    document.getElementById('blockers-modal-textarea').value = blockers;
-    document.getElementById('blockers-modal-view').style.display = 'none';
-    document.getElementById('blockers-modal-textarea').style.display = 'block';
-    document.getElementById('blockers-footer-view').style.display = 'none';
-    document.getElementById('blockers-footer-edit').style.display = 'flex';
-    document.getElementById('blockers-modal-textarea').focus();
+    const retroItems = (meta[currentRetroTicketId] && meta[currentRetroTicketId].retroItems) || '';
+    const editor = document.getElementById('retro-modal-editor');
+    editor.innerHTML = isHtmlContent(retroItems) ? retroItems : renderMarkdown(retroItems || '');
+    document.getElementById('retro-modal-view').style.display = 'none';
+    document.getElementById('retro-editor-wrapper').style.display = 'block';
+    document.getElementById('retro-footer-view').style.display = 'none';
+    document.getElementById('retro-footer-edit').style.display = 'flex';
+    editor.focus();
 }
 
-function cancelBlockersEdit() {
-    document.getElementById('blockers-modal-view').style.display = 'block';
-    document.getElementById('blockers-modal-textarea').style.display = 'none';
-    document.getElementById('blockers-footer-view').style.display = 'flex';
-    document.getElementById('blockers-footer-edit').style.display = 'none';
+function cancelRetroEdit() {
+    document.getElementById('retro-modal-view').style.display = 'block';
+    document.getElementById('retro-editor-wrapper').style.display = 'none';
+    document.getElementById('retro-footer-view').style.display = 'flex';
+    document.getElementById('retro-footer-edit').style.display = 'none';
 }
 
-function closeBlockersModal() {
-    document.getElementById('blockers-modal').classList.remove('show');
+function closeRetroModal() {
+    document.getElementById('retro-modal').classList.remove('show');
 }
 
-function saveBlockers() {
-    const ticketId = currentBlockersTicketId;
-    const value = document.getElementById('blockers-modal-textarea').value;
-    const btn = document.getElementById('blockers-save-btn');
+function saveRetroItems() {
+    const ticketId = currentRetroTicketId;
+    const editor = document.getElementById('retro-modal-editor');
+    let value = editor.innerHTML.trim();
+    if (value === '<br>' || value === '<div><br></div>' || value === '<p><br></p>') value = '';
+    const btn = document.getElementById('retro-save-btn');
 
     btn.textContent = 'Saving...';
     btn.disabled = true;
@@ -519,45 +535,55 @@ function saveBlockers() {
     fetch('/enhancement-meta', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ticketId, field: 'blockers', value })
+        body: JSON.stringify({ ticketId, field: 'retroItems', value })
     })
         .then(r => r.json())
         .then(result => {
             if (!result.success) throw new Error(result.error);
 
-            // Update global cache
             if (!window.enhancementMeta) window.enhancementMeta = {};
             if (!window.enhancementMeta[ticketId]) window.enhancementMeta[ticketId] = {};
-            window.enhancementMeta[ticketId].blockers = value;
+            window.enhancementMeta[ticketId].retroItems = value;
 
-            // Update button indicator
-            const blockersBtn = document.getElementById(`blockers-btn-${currentBlockersIndex}`);
-            if (blockersBtn) {
-                if (value.trim().length > 0) {
-                    blockersBtn.classList.add('has-blockers');
-                } else {
-                    blockersBtn.classList.remove('has-blockers');
-                }
+            const retroBtn = document.getElementById(`retro-btn-${currentRetroIndex}`);
+            if (retroBtn) {
+                if (value.trim().length > 0) retroBtn.classList.add('has-retro-items');
+                else retroBtn.classList.remove('has-retro-items');
             }
 
-            // Switch back to view mode
-            const viewEl = document.getElementById('blockers-modal-view');
-            viewEl.innerHTML = value.trim()
-                ? renderMarkdown(value)
-                : '<span class="blockers-placeholder">No blockers noted.</span>';
-            cancelBlockersEdit();
+            setRetroView(renderRetroContent(value));
+            cancelRetroEdit();
         })
-        .catch(err => showErrorModal('Failed to save blockers: ' + err.message))
+        .catch(err => showErrorModal('Failed to save retro items: ' + err.message))
         .finally(() => {
             btn.textContent = 'Save';
             btn.disabled = false;
         });
 }
 
+function initRetroToolbar() {
+    const toolbar = document.getElementById('retro-toolbar');
+    if (!toolbar) return;
+    toolbar.addEventListener('mousedown', (e) => {
+        const btn = e.target.closest('button[data-cmd]');
+        if (!btn) return;
+        e.preventDefault();
+        const cmd = btn.dataset.cmd;
+        const arg = btn.dataset.arg;
+        if (cmd === 'createLink') {
+            const url = prompt('Enter URL:');
+            if (url) document.execCommand('createLink', false, url);
+        } else {
+            document.execCommand(cmd, false, arg || null);
+        }
+        document.getElementById('retro-modal-editor').focus();
+    });
+}
+
 // --- Initialization ---
 function initializeApp() {
-    // Render tickets UI
     renderTickets();
+    initRetroToolbar();
 
     // Fetch CSV and enhancement meta in parallel
     Promise.all([

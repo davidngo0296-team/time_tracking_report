@@ -136,22 +136,36 @@
         </div>
     </div>
 
-    <!-- Blockers Modal -->
-    <div id="blockers-modal" class="modal-overlay">
-        <div class="modal-content" style="border-left: 5px solid #e74c3c; max-width: 700px;">
-            <div class="modal-header" id="blockers-modal-title" style="color: #c0392b;">🚧 Blockers</div>
-            <div class="modal-body">
-                <div id="blockers-modal-view" class="blockers-modal-view"></div>
-                <textarea id="blockers-modal-textarea" class="blockers-textarea" style="display:none" placeholder="Describe blockers in markdown...&#10;&#10;Supports: **bold**, *italic*, # headings, - bullet lists"></textarea>
+    <!-- Retro Items Modal -->
+    <div id="retro-modal" class="modal-overlay">
+        <div class="modal-content retro-modal-content">
+            <div class="modal-header" id="retro-modal-title">&#x1FA9E; Retro items</div>
+            <div class="modal-body retro-modal-body">
+                <div id="retro-modal-view" class="retro-modal-view" style="display:none;"></div>
+                <div id="retro-editor-wrapper" style="display:none;">
+                    <div class="retro-toolbar" id="retro-toolbar">
+                        <button type="button" data-cmd="bold" title="Bold"><b>B</b></button>
+                        <button type="button" data-cmd="italic" title="Italic"><i>I</i></button>
+                        <button type="button" data-cmd="formatBlock" data-arg="H3" title="Heading">H</button>
+                        <button type="button" data-cmd="insertUnorderedList" title="Bullet list">&#x2022; List</button>
+                        <button type="button" data-cmd="insertOrderedList" title="Numbered list">1. List</button>
+                        <button type="button" data-cmd="createLink" title="Insert link">&#x1F517;</button>
+                        <button type="button" data-cmd="removeFormat" title="Clear formatting">&#x2715; Clear</button>
+                    </div>
+                    <div id="retro-modal-editor"
+                         class="retro-editor"
+                         contenteditable="true"
+                         data-placeholder="Capture retro items here..."></div>
+                </div>
             </div>
             <div class="modal-footer">
-                <div id="blockers-footer-view">
-                    <button class="blockers-edit-btn" onclick="editBlockersModal()">✏️ Edit</button>
-                    <button class="modal-btn" onclick="closeBlockersModal()" style="background: #95a5a6;">Close</button>
+                <div id="retro-footer-view">
+                    <button class="retro-edit-btn" onclick="editRetroModal()">✏️ Edit</button>
+                    <button class="modal-btn" onclick="closeRetroModal()" style="background: #95a5a6;">Close</button>
                 </div>
-                <div id="blockers-footer-edit" style="display:none">
-                    <button class="blockers-save-btn" id="blockers-save-btn" onclick="saveBlockers()">Save</button>
-                    <button class="modal-btn" onclick="cancelBlockersEdit()" style="background: #95a5a6;">Cancel</button>
+                <div id="retro-footer-edit" style="display:none">
+                    <button class="retro-save-btn" id="retro-save-btn" onclick="saveRetroItems()">Save</button>
+                    <button class="modal-btn" onclick="cancelRetroEdit()" style="background: #95a5a6;">Cancel</button>
                 </div>
             </div>
         </div>
