@@ -59,7 +59,8 @@ function detectStaleEnhancements(rawData, allowedTitles) {
         const prevSum = sumFor(prevDate);
         const delta = latestSum - prevSum;
         const ticketId = ((latestRow && latestRow['Ticket ID']) || '').trim();
-        const entry = { title, ticketId, latestDate, prevDate, latestSum, prevSum, delta };
+        const importance = ((latestRow && latestRow['Importance']) || '').trim();
+        const entry = { title, ticketId, importance, latestDate, prevDate, latestSum, prevSum, delta };
 
         if (delta < STALE_THRESHOLD_MIN) {
             stale.push(entry);
@@ -67,6 +68,14 @@ function detectStaleEnhancements(rawData, allowedTitles) {
             active.push(entry);
         }
     });
+
+    const byImportance = (a, b) => {
+        const na = parseInt(a.importance) || 9999;
+        const nb = parseInt(b.importance) || 9999;
+        return na - nb;
+    };
+    stale.sort(byImportance);
+    active.sort(byImportance);
 
     return { stale, active };
 }
@@ -81,10 +90,22 @@ function renderStaleEnhancements(result) {
         return;
     }
 
+    const priorityColor = (imp) => {
+        const v = (imp || '').toLowerCase().trim();
+        if (v.includes('should +')) return '#ef6c00';
+        if (v.includes('should -')) return '#2e7d32';
+        if (v.includes('should'))   return '#f9a825';
+        return '#e74c3c';
+    };
+
     const buildList = (items) => items.map(r => {
         const deltaMin = Math.round(r.delta);
         const safeTitle = r.title.replace(/"/g, '&quot;');
-        return `<li><a href="#" data-title="${safeTitle}">${r.title}</a>` +
+        const priorityBadge = r.importance
+            ? `<span class="stale-priority" style="background:${priorityColor(r.importance)}">#${r.importance}</span> `
+            : '';
+        const href = r.ticketId ? `https://link.orangelogic.com/Tasks/${r.ticketId}` : '#';
+        return `<li>${priorityBadge}<a href="${href}" data-title="${safeTitle}">${r.title}</a>` +
             ` <span class="stale-meta">(${r.prevDate} &rarr; ${r.latestDate}, delta: ${deltaMin} min)</span></li>`;
     }).join('');
 
