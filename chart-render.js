@@ -358,6 +358,7 @@ function createChartSection(container, title, index, groupedData, rawData, globa
         row['Ticket ID']
     );
     const ticketId = enhancementTask ? enhancementTask['Ticket ID'] : null;
+    section.id = ticketId ? `enhancement-section-${ticketId}` : `enhancement-section-idx-${index}`;
     const enhancementUrl = ticketId ? `https://link.orangelogic.com/Tasks/${ticketId}` : null;
     const importance = enhancementTask ? enhancementTask['Importance'] : '';
 

@@ -56,7 +56,8 @@ const server = http.createServer((req, res) => {
         '/tree.js': { file: 'tree.js', type: 'application/javascript' },
         '/app.js': { file: 'app.js', type: 'application/javascript' },
         '/planning-review.js': { file: 'planning-review.js', type: 'application/javascript' },
-        '/project-risk.js': { file: 'project-risk.js', type: 'application/javascript' }
+        '/project-risk.js': { file: 'project-risk.js', type: 'application/javascript' },
+        '/stale-detector.js': { file: 'stale-detector.js', type: 'application/javascript' }
     };
 
     if (req.method === 'GET' && staticFiles[req.url]) {

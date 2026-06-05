@@ -1915,3 +1915,86 @@ h2 {
 .pr-person-pill:hover {
     filter: brightness(0.93);
 }
+
+/* --- Stale Enhancement Banner --- */
+.stale-banner {
+    background: #fff3e0;
+    border-left: 4px solid #ef6c00;
+    border-radius: 6px;
+    padding: 12px 16px;
+    margin: 12px 0 18px 0;
+}
+.stale-banner h3 {
+    margin: 0 0 8px 0;
+    font-size: 15px;
+    color: #b35400;
+}
+.stale-banner ul {
+    margin: 0;
+    padding-left: 18px;
+}
+.stale-banner li {
+    margin: 2px 0;
+}
+.stale-banner a {
+    color: #d35400;
+    font-weight: 600;
+    text-decoration: none;
+    cursor: pointer;
+}
+.stale-banner a:hover {
+    text-decoration: underline;
+}
+.stale-meta {
+    color: #7f8c8d;
+    font-size: 12px;
+    margin-left: 6px;
+}
+
+/* --- Active (Not Stale) Enhancement Banner --- */
+.active-banner {
+    background: #e8f5e9;
+    border-left: 4px solid #2e7d32;
+    border-radius: 6px;
+    padding: 12px 16px;
+    margin: 12px 0 18px 0;
+}
+.active-banner h3 {
+    margin: 0 0 8px 0;
+    font-size: 15px;
+    color: #1b5e20;
+}
+.active-banner ul {
+    margin: 0;
+    padding-left: 18px;
+}
+.active-banner li {
+    margin: 2px 0;
+}
+.active-banner a {
+    color: #2e7d32;
+    font-weight: 600;
+    text-decoration: none;
+    cursor: pointer;
+}
+.active-banner a:hover {
+    text-decoration: underline;
+}
+
+/* --- Collapsible header (shared by both banners) --- */
+.progress-banner-header {
+    cursor: pointer;
+    user-select: none;
+}
+.progress-banner-header:hover {
+    opacity: 0.85;
+}
+.progress-toggle {
+    display: inline-block;
+    width: 14px;
+    font-size: 11px;
+    margin-right: 4px;
+}
+.progress-banner-body {
+    margin-top: 6px;
+}

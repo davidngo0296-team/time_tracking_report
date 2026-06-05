@@ -1,0 +1,127 @@
+/**
+ * Stale Enhancement Detection
+ * Splits in-scope enhancements into "stale" (no Dev/QA progress) and "active"
+ * (made progress) since their previous capture date.
+ */
+
+const STALE_COUNTED_TYPES = new Set([
+    'development', 'qa', 'defect - application', 'defect - qa vietnam',
+    'configuration request', 'merge request execution'
+]);
+const STALE_STATUS_SCOPE = new Set(['in development', 'in review', 'ready for development']);
+const STALE_THRESHOLD_MIN = 6; // delta < 6 min counts as no progress
+
+function detectStaleEnhancements(rawData, allowedTitles) {
+    const allowed = allowedTitles instanceof Set ? allowedTitles : null;
+    const byTitle = {};
+    rawData.forEach(row => {
+        const title = row['Enhancement title'];
+        if (!title) return;
+        if (allowed && !allowed.has(title)) return;
+        if (!byTitle[title]) byTitle[title] = [];
+        byTitle[title].push(row);
+    });
+
+    const stale = [];
+    const active = [];
+
+    Object.entries(byTitle).forEach(([title, rows]) => {
+        const dateSet = new Set();
+        rows.forEach(r => { if (r['Capture date']) dateSet.add(r['Capture date']); });
+        const dates = Array.from(dateSet).sort();
+        if (dates.length < 2) return;
+
+        const latestDate = dates[dates.length - 1];
+        const prevDate = dates[dates.length - 2];
+
+        const latestRow = rows.find(r => r['Capture date'] === latestDate);
+        const status = ((latestRow && latestRow['Enhancement Status']) || '').trim().toLowerCase();
+        if (!STALE_STATUS_SCOPE.has(status)) return;
+
+        const sumFor = (date) => {
+            const seen = new Set();
+            let total = 0;
+            rows.forEach(r => {
+                if (r['Capture date'] !== date) return;
+                const type = (r['Type'] || '').toLowerCase();
+                if (!STALE_COUNTED_TYPES.has(type)) return;
+                const tid = (r['Task Identifier'] || '').trim();
+                if (tid) {
+                    if (seen.has(tid)) return;
+                    seen.add(tid);
+                }
+                total += parseFloat(r['Time spent'] || 0) || 0;
+            });
+            return total;
+        };
+
+        const latestSum = sumFor(latestDate);
+        const prevSum = sumFor(prevDate);
+        const delta = latestSum - prevSum;
+        const ticketId = ((latestRow && latestRow['Ticket ID']) || '').trim();
+        const entry = { title, ticketId, latestDate, prevDate, latestSum, prevSum, delta };
+
+        if (delta < STALE_THRESHOLD_MIN) {
+            stale.push(entry);
+        } else {
+            active.push(entry);
+        }
+    });
+
+    return { stale, active };
+}
+
+function renderStaleEnhancements(result) {
+    const container = document.getElementById('stale-enhancements');
+    if (!container) return;
+
+    const { stale = [], active = [] } = result || {};
+    if (!stale.length && !active.length) {
+        container.innerHTML = '';
+        return;
+    }
+
+    const buildList = (items) => items.map(r => {
+        const anchorId = r.ticketId ? `enhancement-section-${r.ticketId}` : '';
+        const deltaMin = Math.round(r.delta);
+        return `<li><a href="#" data-anchor="${anchorId}">${r.title}</a>` +
+            ` <span class="stale-meta">(${r.prevDate} &rarr; ${r.latestDate}, delta: ${deltaMin} min)</span></li>`;
+    }).join('');
+
+    const buildSection = (cssClass, headerLabel, items) => {
+        if (!items.length) return '';
+        return `<div class="progress-banner ${cssClass}">` +
+            `<h3 class="progress-banner-header" data-collapsed="true">` +
+            `<span class="progress-toggle">&#9654;</span> ${headerLabel} (${items.length})` +
+            `</h3>` +
+            `<ul class="progress-banner-body" style="display:none;">${buildList(items)}</ul>` +
+            `</div>`;
+    };
+
+    container.innerHTML =
+        buildSection('stale-banner', '&#9200; Stale enhancements &mdash; no Dev/QA progress vs prior capture', stale) +
+        buildSection('active-banner', '&#9989; Not stale enhancements &mdash; progress detected', active);
+
+    container.querySelectorAll('.progress-banner-header').forEach(h => {
+        h.addEventListener('click', () => {
+            const body = h.nextElementSibling;
+            const collapsed = h.getAttribute('data-collapsed') === 'true';
+            body.style.display = collapsed ? 'block' : 'none';
+            h.setAttribute('data-collapsed', collapsed ? 'false' : 'true');
+            const toggle = h.querySelector('.progress-toggle');
+            if (toggle) toggle.innerHTML = collapsed ? '&#9660;' : '&#9654;';
+        });
+    });
+
+    container.querySelectorAll('a[data-anchor]').forEach(a => {
+        a.addEventListener('click', (e) => {
+            e.preventDefault();
+            const id = a.getAttribute('data-anchor');
+            const target = id && document.getElementById(id);
+            if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    });
+}
+
+window.detectStaleEnhancements = detectStaleEnhancements;
+window.renderStaleEnhancements = renderStaleEnhancements;

@@ -645,6 +645,13 @@ function initializeApp() {
 
             // Auto-run risk check on load
             checkRisk();
+
+            // Detect stale enhancements after charts render (only for charted enhancements)
+            if (window.detectStaleEnhancements) {
+                const chartedTitles = new Set(Object.keys(groupedData));
+                const stale = window.detectStaleEnhancements(parsedData, chartedTitles);
+                window.renderStaleEnhancements(stale);
+            }
         })
         .catch(error => console.error('Error loading CSV:', error));
 }
