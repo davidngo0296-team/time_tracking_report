@@ -162,7 +162,7 @@ const server = http.createServer((req, res) => {
 
 // --- Logic ---
 
-const ALLOWED_TYPES = ["Development", "Configuration Request", "Defect - QA Vietnam", "Defect - Application", "Question", "QA", "Infrastructure Deployment", "Access Change Request", "Infrastructure Project", "Research Analysis", "Infrastructure Configuration", "Merge Request Execution", "Merge Request Evaluation"];
+const ALLOWED_TYPES = ["Development", "Configuration Request", "Defect - QA Vietnam", "Defect - Application", "Question", "QA", "Infrastructure Deployment", "Access Change Request", "Infrastructure Project", "Research Analysis", "Infrastructure Configuration", "Merge Request Execution", "Merge Request Evaluation", "Technical Document"];
 const CONTAINER_TYPES = ["Development", "QA", "Infrastructure Deployment", "Access Change Request"];
 const NO_RECURSE_TYPES = ["Technical Debt Code"];
 const IGNORED_STATUSES = ["Obsolete", "Duplicate", "Closed", "Needs Peer Review", "Implemented on Dev", "In Revision", "Access granted", "Completed"];
