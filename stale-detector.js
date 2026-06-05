@@ -82,9 +82,9 @@ function renderStaleEnhancements(result) {
     }
 
     const buildList = (items) => items.map(r => {
-        const anchorId = r.ticketId ? `enhancement-section-${r.ticketId}` : '';
         const deltaMin = Math.round(r.delta);
-        return `<li><a href="#" data-anchor="${anchorId}">${r.title}</a>` +
+        const safeTitle = r.title.replace(/"/g, '&quot;');
+        return `<li><a href="#" data-title="${safeTitle}">${r.title}</a>` +
             ` <span class="stale-meta">(${r.prevDate} &rarr; ${r.latestDate}, delta: ${deltaMin} min)</span></li>`;
     }).join('');
 
@@ -113,12 +113,16 @@ function renderStaleEnhancements(result) {
         });
     });
 
-    container.querySelectorAll('a[data-anchor]').forEach(a => {
+    container.querySelectorAll('a[data-title]').forEach(a => {
         a.addEventListener('click', (e) => {
             e.preventDefault();
-            const id = a.getAttribute('data-anchor');
-            const target = id && document.getElementById(id);
-            if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            const title = a.getAttribute('data-title');
+            const info = window.enhancementInfo || {};
+            const index = Object.keys(info).find(i => info[i].title === title);
+            if (index == null) return;
+            const filterSelect = document.getElementById(`filter-${index}`);
+            if (filterSelect) filterSelect.value = 'all';
+            if (window.openTreeModal) window.openTreeModal(Number(index));
         });
     });
 }
