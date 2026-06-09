@@ -791,6 +791,8 @@ function createNoETASection(rawData, globalMaxDate) {
     });
 
     const groupedByEnhancement = {};
+    const importanceMap = {};
+    const ticketIdMap = {};
     noETATasks.forEach(row => {
         const enhancement = row['Enhancement title'] || 'Unknown';
         if (!groupedByEnhancement[enhancement]) {
@@ -799,31 +801,60 @@ function createNoETASection(rawData, globalMaxDate) {
         groupedByEnhancement[enhancement].push({
             title: row['Task title'] || 'Untitled',
             assignee: row['Assignee'] || '(unassigned)',
+            status: row['Status'] || '',
+            credits: row['Credits'] || '',
+            timeLeft: parseFloat(row['Time left'] || 0) || 0,
             link: row['Cortex Link'] || ''
         });
+        if (row['Importance'] && !importanceMap[enhancement]) {
+            importanceMap[enhancement] = row['Importance'];
+        }
+        if (row['Ticket ID'] && !ticketIdMap[enhancement]) {
+            ticketIdMap[enhancement] = row['Ticket ID'];
+        }
     });
 
     const container = document.getElementById('no-eta-container');
     container.innerHTML = '';
 
-    const enhancements = Object.keys(groupedByEnhancement).sort();
+    const enhancements = Object.keys(groupedByEnhancement).sort((a, b) => {
+        const na = parseInt(importanceMap[a]) || 9999;
+        const nb = parseInt(importanceMap[b]) || 9999;
+        return na - nb;
+    });
 
     if (enhancements.length === 0) {
         container.innerHTML = '<p style="color: #27ae60;">✅ All tasks have an ETA assigned!</p>';
         return;
     }
 
+    const priorityColor = (imp) => {
+        const v = (imp || '').toLowerCase().trim();
+        if (v.includes('should +')) return '#ef6c00';
+        if (v.includes('should -')) return '#2e7d32';
+        if (v.includes('should'))   return '#f9a825';
+        return '#e74c3c';
+    };
+
     enhancements.forEach(enhancement => {
         const tasks = groupedByEnhancement[enhancement];
+        const imp = importanceMap[enhancement] || '';
+        const ticketId = ticketIdMap[enhancement] || '';
 
         const group = document.createElement('div');
         group.className = 'no-eta-group';
 
         const header = document.createElement('div');
         header.className = 'no-eta-group-header';
+        const badge = imp
+            ? `<span class="stale-priority" style="background:${priorityColor(imp)}">#${imp}</span> `
+            : '';
+        const reloadBtn = ticketId
+            ? `<button class="no-eta-reload-btn" id="reload-btn-${ticketId}" onclick="reloadEnhancement('${ticketId}', this)">&#x21bb; Reload</button>`
+            : '';
         header.innerHTML = `
-            <span>${enhancement}</span>
-            <span class="count">${tasks.length}</span>
+            <span>${badge}${enhancement}</span>
+            <span style="display:inline-flex;align-items:center;gap:8px;">${reloadBtn}<span class="count">${tasks.length}</span></span>
         `;
         group.appendChild(header);
 
@@ -834,25 +865,44 @@ function createNoETASection(rawData, globalMaxDate) {
             const taskDiv = document.createElement('div');
             taskDiv.className = 'no-eta-task';
 
+            const pillWrap = document.createElement('span');
+            pillWrap.className = 'no-eta-pills';
+            pillWrap.innerHTML =
+                `<span class="no-eta-pill pill-assignee">${task.assignee}</span>` +
+                `<span class="no-eta-pill pill-credits">${task.credits || '0'} credits</span>` +
+                `<span class="no-eta-pill pill-status">${task.status || '-'}</span>` +
+                `<span class="no-eta-pill pill-time-left">${Math.round(task.timeLeft)} min</span>`;
+
             const titleSpan = document.createElement('span');
-            if (task.link) {
-                titleSpan.innerHTML = `<a href="${task.link}" target="_blank">${task.title}</a>`;
-            } else {
-                titleSpan.textContent = task.title;
-            }
+            titleSpan.className = 'no-eta-title';
+            titleSpan.innerHTML = task.link
+                ? `<a href="${task.link}" target="_blank">${task.title}</a>`
+                : task.title;
 
-            const assigneeSpan = document.createElement('span');
-            assigneeSpan.className = 'assignee';
-            assigneeSpan.textContent = task.assignee;
-
+            taskDiv.appendChild(pillWrap);
             taskDiv.appendChild(titleSpan);
-            taskDiv.appendChild(assigneeSpan);
             taskList.appendChild(taskDiv);
         });
 
         group.appendChild(taskList);
         container.appendChild(group);
     });
+
+    const header = document.querySelector('.no-eta-header');
+    if (header && !header.dataset.wired) {
+        header.dataset.wired = '1';
+        header.addEventListener('click', () => {
+            const collapsed = header.getAttribute('data-collapsed') === 'true';
+            const desc = document.getElementById('no-eta-description');
+            const body = document.getElementById('no-eta-container');
+            const toggle = header.querySelector('.progress-toggle');
+            const next = collapsed ? 'block' : 'none';
+            if (desc) desc.style.display = next;
+            if (body) body.style.display = next;
+            if (toggle) toggle.innerHTML = collapsed ? '&#9660;' : '&#9654;';
+            header.setAttribute('data-collapsed', collapsed ? 'false' : 'true');
+        });
+    }
 }
 
 

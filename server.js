@@ -245,6 +245,11 @@ async function runUpdateLogic(token, ticketIdsStr) {
         console.log("Migrating CSV to include Created date...");
         trackingData.forEach(row => row['Created date'] = '');
     }
+    // Migration: If no "Credits" field, add it
+    if (trackingData.length > 0 && !('Credits' in trackingData[0])) {
+        console.log("Migrating CSV to include Credits...");
+        trackingData.forEach(row => row['Credits'] = '');
+    }
 
     // Index for fast lookup — prefer Task Identifier as key (handles renames)
     const dataIndex = {};
@@ -310,6 +315,7 @@ async function runUpdateLogic(token, ticketIdsStr) {
         if (enhancementStatus) {
             log(`  Status: ${enhancementStatus}`);
         }
+
 
         // 2. Get Direct Children
         let directChildren = await searchOLTask(`Parentfolderidentifier:("${fullTicketId}")`, token);
@@ -462,6 +468,26 @@ async function runUpdateLogic(token, ticketIdsStr) {
             const estimatedEndDate = task["Document.CurrentEstimatedEndDate"] || "";
             const parentFolder = task["ParentFolderIdentifier"] || "";
             const createDate = task["CoreField.CreateDate"] || '';
+            const rawCredits = task["Document.Credits"];
+            const credits = (rawCredits != null && rawCredits !== '') ? String(rawCredits).trim() : '';
+            if (taskIdentifier === 'L-422GET') {
+                // Fetch 422GET with no field filter to find the real credits field
+                try {
+                    const allFieldsUrl = `${API_URL}?query=SystemIdentifier:("L-422GET")&token=${token}&format=JSON&limit=1`;
+                    const rawResult = await new Promise((res, rej) => {
+                        https.get(allFieldsUrl, r => {
+                            let d = '';
+                            r.on('data', c => d += c);
+                            r.on('end', () => { try { res(JSON.parse(d)); } catch(e) { rej(e); } });
+                        }).on('error', rej);
+                    });
+                    const item = rawResult.APIResponse && rawResult.APIResponse.Items && rawResult.APIResponse.Items[0];
+                    if (item) {
+                        const nonEmpty = Object.entries(item).filter(([k,v]) => v !== '' && v !== null && v !== undefined && !(Array.isArray(v) && v.length === 0));
+                        log(`  [DEBUG] 422GET non-empty fields: ${nonEmpty.map(([k,v]) => `${k}=${JSON.stringify(v)}`).join(' | ')}`);
+                    }
+                } catch(e) { log(`  [DEBUG] 422GET full fetch failed: ${e.message}`); }
+            }
 
             // Extract dependencies - can be array of objects or string
             let dependencies = "";
@@ -503,7 +529,8 @@ async function runUpdateLogic(token, ticketIdsStr) {
                 'Estimated End Date': estimatedEndDate,
                 'Parent Folder': parentFolder,
                 'Created date': createDate,
-                'Enhancement Status': enhancementStatus
+                'Enhancement Status': enhancementStatus,
+                'Credits': credits
             };
 
             // Backfill History Logic
@@ -598,7 +625,7 @@ function searchOLTaskPage(query, token, start) {
             "Document.CurrentEstimatedCompletionDate", "Document.CortexShareLinkRaw",
             "product.Importance-for-next-release", "Document.Dependencies",
             "Document.CurrentEstimatedStartDate", "Document.CurrentEstimatedEndDate",
-            "ParentFolderIdentifier", "CoreField.CreateDate"
+            "ParentFolderIdentifier", "CoreField.CreateDate", "Document.Credits"
         ].join(",");
 
         const params = new URLSearchParams({

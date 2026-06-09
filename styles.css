@@ -127,8 +127,9 @@ body {
     padding: 8px 0;
     border-bottom: 1px solid #f0f0f0;
     display: flex;
-    justify-content: space-between;
     align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
 }
 
 .no-eta-task:last-child {
@@ -144,10 +145,27 @@ body {
     text-decoration: underline;
 }
 
-.no-eta-task .assignee {
-    color: #888;
-    font-size: 0.9em;
+.no-eta-pills {
+    display: inline-flex;
+    gap: 6px;
+    flex-shrink: 0;
 }
+
+.no-eta-pill {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 0.78em;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.no-eta-pill.pill-assignee   { background: #e3f2fd; color: #1565c0; }
+.no-eta-pill.pill-credits    { background: #fff3e0; color: #e65100; }
+.no-eta-pill.pill-status     { background: #ede7f6; color: #4527a0; }
+.no-eta-pill.pill-time-left  { background: #e8f5e9; color: #2e7d32; }
+
+.no-eta-title { flex: 1; }
 
 /* Enhancement title link */
 .enhancement-section h2 a:hover {
@@ -560,6 +578,20 @@ h2 {
     cursor: not-allowed;
     transform: none;
 }
+
+.no-eta-reload-btn {
+    background: #e8f5e9;
+    color: #2e7d32;
+    border: 1px solid #a5d6a7;
+    padding: 2px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.8em;
+    font-weight: 600;
+    transition: background 0.15s;
+}
+.no-eta-reload-btn:hover { background: #c8e6c9; }
+.no-eta-reload-btn:disabled { opacity: 0.6; cursor: not-allowed; }
 
 /* Gantt Modal */
 #gantt-modal .modal-content {

@@ -211,9 +211,7 @@ function openUpdateModal() {
         if (!latestDateMap[tid] || row['Capture date'] > latestDateMap[tid]) {
             latestDateMap[tid] = row['Capture date'];
             titleMap[tid] = row['Enhancement title'] || '';
-        }
-        if (row['Importance'] && !importanceMap[tid]) {
-            importanceMap[tid] = row['Importance'];
+            importanceMap[tid] = row['Importance'] || '';
         }
     });
 
@@ -227,14 +225,26 @@ function openUpdateModal() {
         return (parseInt(impA) || 999) - (parseInt(impB) || 999);
     });
 
+    const priorityColor = (imp) => {
+        const v = (imp || '').toLowerCase().trim();
+        if (v.includes('should +')) return '#ef6c00';
+        if (v.includes('should -')) return '#2e7d32';
+        if (v.includes('should'))   return '#f9a825';
+        return '#e74c3c';
+    };
+
     sortedIds.forEach(id => {
         const title = titleMap[id] || '(not yet fetched)';
+        const imp = importanceMap[id] || '';
+        const badge = imp
+            ? `<span class="stale-priority" style="background:${priorityColor(imp)}">#${imp}</span> `
+            : '';
         const item = document.createElement('label');
         item.className = 'update-checkbox-item';
         item.innerHTML = `
             <input type="checkbox" class="update-checkbox" value="${id}" checked>
             <span class="update-checkbox-id">${id}</span>
-            <span class="update-checkbox-title">${title}</span>
+            <span class="update-checkbox-title">${badge}${title}</span>
         `;
         list.appendChild(item);
     });

@@ -37,7 +37,7 @@
             </div>
         </div>
 
-        <div class="risk-controls">
+        <div class="risk-controls" style="display: none;">
             <label for="dev-days">Remaining Dev Days:</label>
             <input type="number" id="dev-days" min="0" placeholder="e.g. 5">
             <button class="risk-btn" onclick="checkRisk()">Check Risk</button>
@@ -56,9 +56,22 @@
             </button>
         </div>
 
-        <div id="risk-report"></div>
+        <div id="risk-report" style="display: none;"></div>
 
         <div id="stale-enhancements"></div>
+
+        <div id="no-eta-section" class="enhancement-section" style="margin-top: 20px;">
+            <h2 class="progress-banner-header no-eta-header" data-collapsed="true" style="cursor: pointer;">
+                <span class="progress-toggle">&#9654;</span>
+                &#9888; No ETA (Latest: <span id="no-eta-date-display"></span>)
+            </h2>
+            <p id="no-eta-description" style="color: #666; margin-bottom: 15px; display: none;">
+                Tasks without an estimated completion date, grouped by enhancement.
+            </p>
+            <div id="no-eta-container" style="display: none;">
+                <!-- No ETA tickets will be injected here -->
+            </div>
+        </div>
 
         <div id="report-container"></div>
 
@@ -66,15 +79,6 @@
             <h2>Total Time Left by Team (Latest: <span id="global-date-display"></span>)</h2>
             <div id="team-charts-container" class="charts-container" style="flex-wrap: wrap;">
                 <!-- Team pie charts will be injected here -->
-            </div>
-        </div>
-
-        <div id="no-eta-section" class="enhancement-section" style="margin-top: 40px;">
-            <h2>&#9888; No ETA (Latest: <span id="no-eta-date-display"></span>)</h2>
-            <p style="color: #666; margin-bottom: 15px;">Tasks without an estimated completion date, grouped by
-                enhancement.</p>
-            <div id="no-eta-container">
-                <!-- No ETA tickets will be injected here -->
             </div>
         </div>
     </div>
