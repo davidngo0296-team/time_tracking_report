@@ -800,6 +800,14 @@ h2 {
     color: #555;
 }
 
+.gantt-bounty-star {
+    color: #d4a017;
+    margin-left: 3px;
+    font-size: 1.3em;
+    line-height: 1;
+    vertical-align: middle;
+}
+
 .legend-color {
     width: 20px;
     height: 14px;
@@ -2062,4 +2070,17 @@ h2 {
 }
 .progress-banner-body {
     margin-top: 6px;
+}
+
+/* --- Progress by member section --- */
+#progress-by-member {
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 16px 20px;
+}
+#progress-by-member .pbm-header {
+    font-size: 1.1em;
+    color: #2c3e50;
+    margin: 0 0 4px 0;
 }

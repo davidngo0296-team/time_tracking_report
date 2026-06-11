@@ -905,4 +905,142 @@ function createNoETASection(rawData, globalMaxDate) {
     }
 }
 
+/**
+ * Render "Progress by member" stacked column chart.
+ * Inverts the stale-detector memberDeltas (enhancement -> {member: delta})
+ * into (member -> {enhancement: delta}) and draws a vertical stacked bar.
+ *
+ * @param {object} result - the object returned by detectStaleEnhancements: { stale, active }
+ */
+function renderProgressByMember(result) {
+    const descEl  = document.getElementById('pbm-description');
+    const wrapEl  = document.getElementById('pbm-chart-wrap');
+    const header  = document.querySelector('.pbm-header');
+
+    if (!descEl || !wrapEl) return;
+
+    const entries = [...(result && result.stale || []), ...(result && result.active || [])];
+
+    // Build a stable enhancement -> color map (consistent segment colors)
+    const colorMap = {};
+    let colorIdx = 0;
+    entries.forEach(e => {
+        if (!(e.title in colorMap)) {
+            colorMap[e.title] = colors[colorIdx % colors.length];
+            colorIdx++;
+        }
+    });
+
+    // Invert: byMember[member][enhTitle] += positiveMinutes
+    const byMember = {};
+    entries.forEach(e => {
+        Object.entries(e.memberDeltas || {}).forEach(([member, delta]) => {
+            if (delta <= 0) return; // forward progress only
+            if (!byMember[member]) byMember[member] = {};
+            byMember[member][e.title] = (byMember[member][e.title] || 0) + delta;
+        });
+    });
+
+    // Sort members descending by total delta, drop zero-total members
+    const memberTotals = {};
+    Object.entries(byMember).forEach(([m, map]) => {
+        memberTotals[m] = Object.values(map).reduce((s, v) => s + v, 0);
+    });
+    const members = Object.keys(byMember)
+        .filter(m => memberTotals[m] > 0)
+        .sort((a, b) => memberTotals[b] - memberTotals[a]);
+
+    // Destroy previous chart instance to avoid "Canvas already in use"
+    if (chartInstances['pbm-chart']) {
+        chartInstances['pbm-chart'].destroy();
+        delete chartInstances['pbm-chart'];
+    }
+
+    if (members.length === 0) {
+        wrapEl.style.display = 'none';
+        descEl.textContent = 'No member progress detected in the latest capture interval.';
+        descEl.style.display = 'block';
+        // Wire collapse toggle if not yet wired
+        _wirePbmToggle(header, descEl, wrapEl);
+        return;
+    }
+
+    // Restore default description and ensure wrap is visible
+    descEl.textContent = 'Time spent per member since the previous capture, stacked by enhancement (forward progress only).';
+    descEl.style.display = 'block';
+    wrapEl.style.display = 'block';
+
+    // Build one dataset per enhancement (in colorMap insertion order)
+    const enhancementTitles = Object.keys(colorMap);
+    const datasets = enhancementTitles
+        .filter(title => members.some(m => (byMember[m][title] || 0) > 0))
+        .map(title => ({
+            label: title,
+            data: members.map(m => {
+                const mins = byMember[m][title] || 0;
+                return parseFloat((mins / 60).toFixed(2));
+            }),
+            backgroundColor: colorMap[title],
+            stack: 'progress'
+        }));
+
+    const canvas = document.getElementById('pbm-chart');
+    if (!canvas) return;
+
+    chartInstances['pbm-chart'] = new Chart(canvas.getContext('2d'), {
+        type: 'bar',
+        data: { labels: members, datasets },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                x: {
+                    stacked: true,
+                    title: { display: true, text: 'Team member' }
+                },
+                y: {
+                    stacked: true,
+                    beginAtZero: true,
+                    title: { display: true, text: 'Delta (Hours)' }
+                }
+            },
+            plugins: {
+                legend: { position: 'top' },
+                title: {
+                    display: true,
+                    text: (() => {
+                        const dates = entries.map(e => e.prevDate).filter(Boolean).sort();
+                        const latestDates = entries.map(e => e.latestDate).filter(Boolean).sort();
+                        const from = dates[dates.length - 1] || '';
+                        const to = latestDates[latestDates.length - 1] || '';
+                        return from && to ? `Progress: ${from} -> ${to}` : 'Progress by member';
+                    })()
+                },
+                tooltip: {
+                    callbacks: {
+                        label: c => `${c.dataset.label}: ${c.parsed.y.toFixed(1)}h`
+                    }
+                }
+            }
+        }
+    });
+
+    _wirePbmToggle(header, descEl, wrapEl);
+}
+
+function _wirePbmToggle(header, descEl, wrapEl) {
+    if (!header || header.dataset.wired) return;
+    header.dataset.wired = '1';
+    header.addEventListener('click', () => {
+        const collapsed = header.getAttribute('data-collapsed') === 'true';
+        const next = collapsed ? 'block' : 'none';
+        if (descEl) descEl.style.display = next;
+        if (wrapEl) wrapEl.style.display = next;
+        const toggle = header.querySelector('.progress-toggle');
+        if (toggle) toggle.innerHTML = collapsed ? '&#9660;' : '&#9654;';
+        header.setAttribute('data-collapsed', collapsed ? 'false' : 'true');
+    });
+}
+
+window.renderProgressByMember = renderProgressByMember;
 

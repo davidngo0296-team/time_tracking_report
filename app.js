@@ -661,6 +661,7 @@ function initializeApp() {
                 const chartedTitles = new Set(Object.keys(groupedData));
                 const stale = window.detectStaleEnhancements(parsedData, chartedTitles);
                 window.renderStaleEnhancements(stale);
+                if (window.renderProgressByMember) window.renderProgressByMember(stale);
             }
         })
         .catch(error => console.error('Error loading CSV:', error));

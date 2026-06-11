@@ -78,8 +78,8 @@ function buildGanttData(rawData, enhancementTitle, globalMaxDate, filterValue) {
         const estimatedEndRaw = row['Estimated End Date'] || '';
 
         // Skip closed/obsolete tasks, or tasks with no time left unless awaiting peer review or a container
-        const skipStatuses = ['obsolete', 'duplicate', 'closed', 'implemented on dev'];
-        const keepStatuses = ['needs peer review', 'pending approval', 'in progress', 'not started', 'ready to start', 'to be vetted', 'approved, pending action', 'answered', 'access granted', 'completed', 'in revision'];
+        const skipStatuses = ['obsolete', 'duplicate', 'closed', 'implemented on dev', 'completed'];
+        const keepStatuses = ['needs peer review', 'pending approval', 'in progress', 'not started', 'ready to start', 'to be vetted', 'approved, pending action', 'answered', 'access granted', 'in revision'];
         const isContainer = parentIds.has(taskId);
         const isBlocked = status.includes('blocked') || status.includes('on hold');
         if (skipStatuses.includes(status) || (timeLeftHours <= 0 && !keepStatuses.includes(status) && !isBlocked && !isContainer)) {
@@ -287,7 +287,14 @@ function renderGanttChart(container, ganttData) {
         dateLabel.style.width = `${dayWidth}px`;
         const isWeekend = date.getDay() === 0 || date.getDay() === 6;
         if (isWeekend) dateLabel.classList.add('weekend');
-        dateLabel.textContent = `${date.getMonth() + 1}/${date.getDate()}`;
+
+        const sched = window.getRomeDateStyle ? window.getRomeDateStyle(date) : null;
+        if (sched && sched.bg) {
+            dateLabel.style.background = sched.bg;
+            dateLabel.style.color = sched.color || '#333';
+        }
+        const star = (sched && sched.bounty) ? '<span class="gantt-bounty-star">&#9733;</span>' : '';
+        dateLabel.innerHTML = `${date.getMonth() + 1}/${date.getDate()}${star}`;
         datesContainer.appendChild(dateLabel);
     }
     headerRow.appendChild(datesContainer);
@@ -442,6 +449,30 @@ function renderGanttChart(container, ganttData) {
         <div class="legend-item">
             <span class="legend-color weekend" style="background: #f0f0f0;"></span>
             <span>Weekend</span>
+        </div>
+        <div class="legend-item">
+            <span class="legend-color" style="background: #a9d18e;"></span>
+            <span>Enhancement dev</span>
+        </div>
+        <div class="legend-item">
+            <span class="legend-color" style="background: #bfbfbf;"></span>
+            <span>Stabilisation</span>
+        </div>
+        <div class="legend-item">
+            <span class="legend-color" style="background: #f8cbcb;"></span>
+            <span>Holiday (VN)</span>
+        </div>
+        <div class="legend-item">
+            <span class="legend-color" style="background: #f4b183;"></span>
+            <span>Holiday (ID)</span>
+        </div>
+        <div class="legend-item">
+            <span class="gantt-bounty-star" style="margin-right:6px;">&#9733;</span>
+            <span>Bounty day</span>
+        </div>
+        <div class="legend-item">
+            <span class="legend-color" style="background:#e74c3c;"></span>
+            <span>Branch</span>
         </div>
     `;
     container.appendChild(legend);

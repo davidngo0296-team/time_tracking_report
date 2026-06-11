@@ -60,6 +60,19 @@
 
         <div id="stale-enhancements"></div>
 
+        <div id="progress-by-member" class="enhancement-section" style="margin-top: 20px;">
+            <h2 class="progress-banner-header pbm-header" data-collapsed="false" style="cursor:pointer;">
+                <span class="progress-toggle">&#9660;</span>
+                &#128202; Progress by member
+            </h2>
+            <p id="pbm-description" style="color:#666; margin-bottom:10px;">
+                Time spent per member since the previous capture, stacked by enhancement (forward progress only).
+            </p>
+            <div id="pbm-chart-wrap" style="height:420px; position:relative;">
+                <canvas id="pbm-chart"></canvas>
+            </div>
+        </div>
+
         <div id="no-eta-section" class="enhancement-section" style="margin-top: 20px;">
             <h2 class="progress-banner-header no-eta-header" data-collapsed="true" style="cursor: pointer;">
                 <span class="progress-toggle">&#9654;</span>
@@ -220,6 +233,7 @@
     <!-- JavaScript Files -->
     <script src="chart-utils.js"></script>
     <script src="chart-render.js"></script>
+    <script src="rome-schedule.js"></script>
     <script src="gantt.js"></script>
     <script src="tree.js"></script>
     <script src="planning-review.js"></script>
