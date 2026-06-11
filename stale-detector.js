@@ -55,12 +55,39 @@ function detectStaleEnhancements(rawData, allowedTitles) {
             return total;
         };
 
+        const sumByMember = (date) => {
+            const seen = new Set();
+            const byMember = {};
+            rows.forEach(r => {
+                if (r['Capture date'] !== date) return;
+                const type = (r['Type'] || '').toLowerCase();
+                if (!STALE_COUNTED_TYPES.has(type)) return;
+                const tid = (r['Task Identifier'] || '').trim();
+                if (tid) {
+                    if (seen.has(tid)) return;
+                    seen.add(tid);
+                }
+                const assignee = (r['Assignee'] || '(unassigned)').trim();
+                byMember[assignee] = (byMember[assignee] || 0) + (parseFloat(r['Time spent'] || 0) || 0);
+            });
+            return byMember;
+        };
+
         const latestSum = sumFor(latestDate);
         const prevSum = sumFor(prevDate);
         const delta = latestSum - prevSum;
+
+        const latestByMember = sumByMember(latestDate);
+        const prevByMember = sumByMember(prevDate);
+        const memberDeltas = {};
+        new Set([...Object.keys(latestByMember), ...Object.keys(prevByMember)]).forEach(m => {
+            const d = (latestByMember[m] || 0) - (prevByMember[m] || 0);
+            if (Math.abs(d) > 0.001) memberDeltas[m] = d;
+        });
+
         const ticketId = ((latestRow && latestRow['Ticket ID']) || '').trim();
         const importance = ((latestRow && latestRow['Importance']) || '').trim();
-        const entry = { title, ticketId, importance, latestDate, prevDate, latestSum, prevSum, delta };
+        const entry = { title, ticketId, importance, latestDate, prevDate, latestSum, prevSum, delta, memberDeltas };
 
         if (delta < STALE_THRESHOLD_MIN) {
             stale.push(entry);
@@ -99,14 +126,21 @@ function renderStaleEnhancements(result) {
     };
 
     const buildList = (items) => items.map(r => {
-        const deltaMin = Math.round(r.delta);
+        const deltaHr = (r.delta / 60).toFixed(1);
         const safeTitle = r.title.replace(/"/g, '&quot;');
         const priorityBadge = r.importance
             ? `<span class="stale-priority" style="background:${priorityColor(r.importance)}">#${r.importance}</span> `
             : '';
         const href = r.ticketId ? `https://link.orangelogic.com/Tasks/${r.ticketId}` : '#';
+        const tooltipLines = Object.entries(r.memberDeltas || {})
+            .sort((a, b) => b[1] - a[1])
+            .map(([m, d]) => `${m}: +${(d / 60).toFixed(1)}h`)
+            .join('\n');
+        const deltaSpan = tooltipLines
+            ? `<span class="stale-delta" data-tooltip="${tooltipLines.replace(/"/g, '&quot;')}">delta: ${deltaHr}h</span>`
+            : `<span>delta: ${deltaHr}h</span>`;
         return `<li>${priorityBadge}<a href="${href}" data-title="${safeTitle}">${r.title}</a>` +
-            ` <span class="stale-meta">(${r.prevDate} &rarr; ${r.latestDate}, delta: ${deltaMin} min)</span></li>`;
+            ` <span class="stale-meta">(${r.prevDate} &rarr; ${r.latestDate}, ${deltaSpan})</span></li>`;
     }).join('');
 
     const buildSection = (cssClass, headerLabel, items) => {
